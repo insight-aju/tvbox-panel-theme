@@ -354,7 +354,8 @@ input[type=range]{
   font-size: 12px;
   padding: 3px 8px;
   border-radius: 999px;
-  background: rgba(15, 23, 42, .06);
+  background: rgba(255, 140, 0, .06); /*15, 23, 42*/
   color: var(--text);
   border: 1px solid rgba(15, 23, 42, .10);
 }
+
