@@ -1,0 +1,378 @@
+/* style.css - TEMA LIGHT (v2.0) - remoto para teste (profissional/legível) */
+
+:root{
+  color-scheme: light;
+
+  /* Paleta base */
+  --bg: #f2f4f8;
+  --text: #0f172a;
+  --muted: #475569;
+
+  /* Superfícies */
+  --header-bg: rgba(255,255,255,.72);
+  --card-bg: rgba(255,255,255,.78);
+  --card-border: rgba(15,23,42,.10);
+
+  /* Controles */
+  --btn-bg: rgba(255,255,255,.92);
+  --btn-border: rgba(15,23,42,.14);
+  --btn-hover: rgba(255,255,255,.98);
+
+  /* Acentos */
+  --accent: #ff8c00;
+  --danger: #e53935;
+  --success: #2e7d32;
+
+  /* Sombras e foco */
+  --shadow: 0 10px 28px rgba(2, 6, 23, .12);
+  --shadow-sm: 0 6px 18px rgba(2, 6, 23, .10);
+  --ring: 0 0 0 3px rgba(255, 140, 0, .22);
+
+  /* Raios */
+  --radius: 16px;
+  --radius-sm: 12px;
+}
+
+/* ====== FUNDO COM OVERLAY (pra imagem não “matar” o contraste) ====== */
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background-color: #f2f4f8;                 /* fallback */
+  background-image: url('images/background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;             /* desktop ok */
+  color: #0f172a;
+  font-family: system-ui, Segoe UI, Roboto, Arial;
+}
+
+/* A imagem fica aqui, com uma película clara por cima */
+body::before{
+  content:"";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+
+  /* 1) película clara + 2) imagem */
+  background:
+    /*linear-gradient(rgba(242,244,248,.70), rgba(242,244,248,.70)),
+    url('images/background.jpg');*/
+  background-size: cover;
+  background-position: center;
+  filter: saturate(1.05) contrast(1.02);
+}
+
+/* Em celular, “fixed background” costuma dar sensação estranha 
+@media (max-width: 720px){
+  body::before{
+    position: absolute; /* reduz “saltos” em alguns navegadores mobile */
+    min-height: 100%;
+  }
+}*/
+@media (max-width: 720px){
+  body{ background-attachment: scroll; }    /* mobile mais estável */
+}
+
+/* ====== HEADER ====== */
+header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(15,23,42,.10);
+  background-color: rgba(255,255,255,.72);
+  backdrop-filter: blur(10px);
+}
+
+header strong{
+  color: var(--text);
+}
+
+/* ====== CONTAINER ====== */
+.wrap{
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 18px;
+  display: grid;
+  gap: 16px;
+}
+
+/* ====== CARDS ====== */
+.card {
+  background: rgba(255,255,255,.60);        /* ↓ ajuste aqui (0.80–0.90) 84*/
+  border: 1px solid rgba(15,23,42,.10);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 10px 28px rgba(2,6,23,.12);
+  backdrop-filter: blur(10px);
+}
+
+
+/* títulos dentro do card, se houver */
+.card h2, .card h3, .card h4{
+  margin: 0 0 10px 0;
+  color: var(--text);
+}
+
+/* Linhas flex genéricas */
+.row{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ====== TIPOGRAFIA AUXILIAR ====== */
+.muted{
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Número grande de volume */
+.volNum{
+  font-size: 28px;
+  font-weight: 800;
+  min-width: 64px;
+  text-align: center;
+  color: var(--text);
+}
+
+/* ====== SLIDERS ====== */
+input[type=range]{
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+/* Pequenos grids internos */
+.grid{
+  display: grid;
+  gap: 12px;
+}
+
+/* ====== BOTOES ====== */
+.btn{
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+  transition: transform .08s ease, box-shadow .12s ease, background-color .12s ease, border-color .12s ease;
+}
+
+.btn:hover{
+  background: var(--btn-hover);
+  box-shadow: 0 12px 26px rgba(2, 6, 23, .14);
+}
+
+.btn:active{
+  transform: translateY(1px);
+  box-shadow: 0 8px 18px rgba(2, 6, 23, .12);
+}
+
+.btn:focus-visible{
+  outline: none;
+  box-shadow: var(--shadow-sm), var(--ring);
+}
+
+.btn[disabled], .btn:disabled{
+  opacity: .55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Danger */
+.btn-danger{
+  background: rgba(229,57,53,.12);
+  color: #7f1d1d;
+  border-color: rgba(229,57,53,.35);
+  box-shadow: none;
+}
+
+.btn-danger:hover{
+  background: rgba(229,57,53,.16);
+}
+
+/* ====== RELES / ESTADOS ====== */
+.relay-controls{
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.relay-toggle.active{
+  background: rgba(46,125,50,.14);
+  border-color: rgba(46,125,50,.38);
+  color: #14532d;
+  box-shadow: 0 0 0 3px rgba(46,125,50,.18);
+  transform: translateY(-1px);
+}
+
+/* ====== LOGS (esp.html) ====== */
+.logbox {
+  min-height: 280px;
+  max-height: 300px;
+  overflow-y: auto;
+
+  background: rgba(255,255,255,.78) !important;
+  color: #0b1220;
+  border: 1px solid rgba(15,23,42,.10);
+  border-radius: 12px;
+  padding: 12px;
+
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.85em;
+}
+
+/* Mensagens inline */
+.error-message, .success-message{
+  font-size: .85rem;
+  margin-top: 5px;
+  display: none;
+}
+
+.error-message{ color: #b91c1c; }
+.success-message{ color: #166534; }
+
+.error-message.show, .success-message.show{ display: block; }
+
+/* Indicador de status */
+.status-indicator{
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.status-online{ background-color: var(--success); }
+.status-offline{ background-color: var(--danger); }
+
+/* ====== SELETOR DE IDIOMA ====== */
+.lang-picker{
+  display: flex;
+  gap: 8px;
+  margin-left: 16px;
+}
+
+.lang-select-wrap{
+  display: none;
+  margin-left: 16px;
+}
+
+.lang-select{
+  height: 32px;
+  border-radius: 999px;
+  padding: 0 10px;
+  border: 1px solid var(--btn-border);
+  background: rgba(255,255,255,.92);
+  color: var(--text);
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.lang-select:focus{
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+@media (max-width: 720px) and (orientation: portrait){
+  .lang-picker{ display: none; }
+  .lang-select-wrap{ display: inline-flex; margin-left: 0; }
+}
+
+@media (max-width: 720px) and (orientation: landscape){
+  .lang-select-wrap{ display: none; }
+  .lang-picker{ display: flex; }
+}
+
+.lang-btn{
+  min-width: 32px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1;
+  border: 1px solid var(--btn-border);
+  background: rgba(255,255,255,.92);
+  color: var(--text);
+  cursor: pointer;
+  opacity: .90;
+  box-shadow: 0 6px 16px rgba(2, 6, 23, .10);
+}
+
+.lang-btn:hover{ opacity: 1; }
+
+.lang-btn .lang-flag{ font-size: 16px; }
+.lang-btn .lang-code{
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.lang-btn[aria-current="true"]{
+  box-shadow: 0 6px 16px rgba(2, 6, 23, .10), var(--ring);
+  opacity: 1;
+}
+
+/* ====== CARD: APLICATIVOS (index.html) ====== */
+.card .app-row{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-left, .app-center, .app-right{
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-left{ justify-content: flex-start; }
+.app-center{ justify-content: center; }
+.app-right{ justify-content: flex-end; }
+
+/* ====== RESPONSIVO ====== */
+@media (max-width: 720px){
+  header{ flex-wrap: wrap; }
+  header strong{ flex: 1 1 100%; }
+  header nav{ flex: 1 1 auto; }
+
+  .lang-picker{ flex-wrap: wrap; margin-left: 0; }
+  .wrap{ padding: 12px; }
+
+  .card .app-row{ flex-direction: column; align-items: stretch; }
+  .app-left, .app-center, .app-right{
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .app-left .btn, .app-center .btn, .app-right .btn{ width: 100%; }
+
+  .relay-controls{ justify-content: center; }
+  .relay-controls .btn{ flex: 1 1 calc(50% - 10px); min-width: 140px; }
+
+  .control-group{ width: 100%; min-width: 0; }
+}
+
+/* Marcador de versão (apenas para teste do remoto) */
+.ver{
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, .06);
+  color: var(--text);
+  border: 1px solid rgba(15, 23, 42, .10);
+}

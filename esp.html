@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ESP & Logs</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!--
+    Pagina: esp.html
+    Funcao:
+      - Definir o IP do controle (ESP / servidor).
+      - Exibir feedback em tempo real do ESP32 (status, volumes, reles).
+      - Mostrar logs do servidor.
+    Endpoints relacionados (ver servidor Python):
+      - GET/POST /api/esp-ip   -> carrega/salva IP do ESP.
+      - GET      /api/status   -> estado do ESP (online/offline, volumes, mute, reles).
+      - GET      /api/logs     -> ultimas linhas de log do servidor.
+  -->
+  <header>
+    <strong data-i18n="configTitle">Configuracao do Controle</strong> <span class="ver">v2.0</span>
+    <nav><a href="index.html" data-i18n="panel">Painel</a></nav>
+
+    <!-- Seletor de idioma (botoes pt/es/en/fr/it/de)
+         Estilos: ver style.css, secao "SELECIONADOR DE IDIOMA" -->
+    <div class="lang-picker" role="group" aria-label="Idioma">
+      <button class="lang-btn" data-lang="pt" title="Portugues (Brasil)">
+        <span class="lang-flag" aria-hidden="true">🇧🇷</span>
+        <span class="lang-code">BR</span>
+      </button>
+      <button class="lang-btn" data-lang="es" title="Espanol">
+        <span class="lang-flag" aria-hidden="true">🇪🇸</span>
+        <span class="lang-code">ES</span>
+      </button>
+      <button class="lang-btn" data-lang="en" title="English">
+        <span class="lang-flag" aria-hidden="true">🇺🇸</span>
+        <span class="lang-code">EN</span>
+      </button>
+      <button class="lang-btn" data-lang="fr" title="Francais">
+        <span class="lang-flag" aria-hidden="true">🇫🇷</span>
+        <span class="lang-code">FR</span>
+      </button>
+      <button class="lang-btn" data-lang="it" title="Italiano">
+        <span class="lang-flag" aria-hidden="true">🇮🇹</span>
+        <span class="lang-code">IT</span>
+      </button>
+      <button class="lang-btn" data-lang="de" title="Deutsch">
+        <span class="lang-flag" aria-hidden="true">🇩🇪</span>
+        <span class="lang-code">DE</span>
+      </button>
+    </div>
+<!-- Seletor compacto (mobile retrato) -->
+<label class="lang-select-wrap" aria-label="Idioma">
+  <select id="langSelect" class="lang-select" aria-label="Idioma">
+    <option value="pt">🇧🇷 BR</option>
+    <option value="es">🇪🇸 ES</option>
+    <option value="en">🇺🇸 EN</option>
+    <option value="fr">🇫🇷 FR</option>
+    <option value="it">🇮🇹 IT</option>
+    <option value="de">🇩🇪 DE</option>
+  </select>
+</label>
+
+  </header>
+
+  <main class="wrap">
+    <!-- CARD: Definir IP do controle -->
+    <section class="card">
+      <h3 data-i18n="setIpTitle">Definir IP do Controle</h3>
+      <div class="row">
+        <input id="esp_ip" placeholder="ex: 192.168.0.150" style="flex:1">
+        <button class="btn" id="save" data-i18n="save">Salvar</button>
+      </div>
+      <div class="error-message" id="esp-ip-error"></div>
+      <div class="success-message" id="esp-ip-success"></div>
+    </section>
+
+    <!-- CARD: Feedback do ESP32 -->
+    <section class="card">
+      <h3 data-i18n="espFeedback">Feedback do ESP32</h3>
+      <div id="esp-feedback">
+        <p>
+          <span class="status-indicator" id="esp-status-indicator"></span>
+          <span data-i18n="statusLabel">Status:</span>
+          <span id="esp-feedback-status">Carregando...</span>
+        </p>
+        <p><span data-i18n="ipLabel">IP:</span> <span id="esp-feedback-ip">Carregando...</span></p>
+        <p data-i18n="irVolumes">Volumes IR:</p>
+        <ul>
+          <li>
+            <span data-i18n="kiosk">Quiosque</span>:
+            <span id="esp-feedback-quiosque-vol">--</span>
+            <span id="esp-feedback-quiosque-mute" style="color: red; display: none;">Mudo</span>
+          </li>
+          <li>
+            <span data-i18n="pool">Piscina</span>:
+            <span id="esp-feedback-piscina-vol">--</span>
+            <span id="esp-feedback-piscina-mute" style="color: red; display: none;">Mudo</span>
+          </li>
+        </ul>
+        <p data-i18n="relayStates">Estados Reles:</p>
+        <ul id="esp-feedback-relay-list">
+          <li><span data-i18n="r1">Painel de LED</span> (GPIO 23): <span id="esp-feedback-r1">--</span></li>
+          <li><span data-i18n="r2">Sistema de som</span> (GPIO 22): <span id="esp-feedback-r2">--</span></li>
+</ul>
+      </div>
+      <div class="error-message" id="esp-feedback-error"></div>
+    </section>
+
+    
+    <!-- CARD: Atualizações (GitHub) -->
+    <section class="card">
+      <h3>Atualizações (GitHub)</h3>
+      <div class="row" style="gap:10px; flex-wrap: wrap;">
+        <button class="btn" id="btn-sync-ui">Sincronizar UI</button>
+        <button class="btn" id="btn-sync-videos">Sincronizar Vídeos</button>
+      </div>
+      <div class="muted" id="sync-result" style="margin-top:10px;"></div>
+    </section>
+
+<!-- CARD: Logs do servidor -->
+    <section class="card">
+      <h3 data-i18n="serverLogs">Logs do Servidor</h3>
+      <pre id="logs" class="logbox">...</pre>
+      <div class="row">
+        <button class="btn" id="reload-logs" data-i18n="reloadLogs">Recarregar Logs</button>
+      </div>
+    </section>
+  </main>
+
+<!-- === I18N para esp.html (textos da pagina de configuracao) === -->
+<script>
+const I18N = {
+  pt: {
+    configTitle: "Configuracao do Controle",
+    panel: "Painel",
+    setIpTitle: "Definir IP do Controle",
+    save: "Salvar",
+    espFeedback: "Feedback do ESP32",
+    statusLabel: "Status:",
+    ipLabel: "IP:",
+    irVolumes: "Volumes IR:",
+    relayStates: "Estados Reles:",
+    r1: "Painel de LED",
+    r2: "Sistema de som",
+    serverLogs: "Logs do Servidor",
+    reloadLogs: "Recarregar Logs",
+    online: "Online", offline: "Offline",
+    ipPlaceholder: "ex: 192.168.0.150",
+    errLoadIP: "Erro ao carregar IP do ESP32: ",
+    succSaveIP: "IP do ESP32 salvo com sucesso!",
+    errSaveIP: "Falha ao salvar IP do ESP32: ",
+    errCommSaveIP: "Erro de comunicacao ao salvar IP do ESP32: ",
+    errLoadLogs: "Erro ao carregar logs: ",
+    errLoadStatus: "Erro ao carregar estado do ESP32: "
+  },
+  es: {
+    configTitle: "Configuracion del Control",
+    panel: "Panel",
+    setIpTitle: "Definir IP del Control",
+    save: "Guardar",
+    espFeedback: "Feedback del ESP32",
+    statusLabel: "Estado:",
+    ipLabel: "IP:",
+    irVolumes: "Volumenes IR:",
+    relayStates: "Estados de Reles:",
+    r1: "Panel de LED",
+    r2: "Sistema de sonido",
+    serverLogs: "Registros del Servidor",
+    reloadLogs: "Recargar Registros",
+    online: "En linea", offline: "Desconectado",
+    ipPlaceholder: "ej: 192.168.0.150",
+    errLoadIP: "Error al cargar el IP del ESP32: ",
+    succSaveIP: "IP del ESP32 guardada con exito!",
+    errSaveIP: "Fallo al guardar el IP del ESP32: ",
+    errCommSaveIP: "Error de comunicacion al guardar el IP del ESP32: ",
+    errLoadLogs: "Error al cargar los registros: ",
+    errLoadStatus: "Error al cargar el estado del ESP32: "
+  },
+  en: {
+    configTitle: "Controller Setup",
+    panel: "Panel",
+    setIpTitle: "Set Controller IP",
+    save: "Save",
+    espFeedback: "ESP32 Feedback",
+    statusLabel: "Status:",
+    ipLabel: "IP:",
+    irVolumes: "IR Volumes:",
+    relayStates: "Relay States:",
+    r1: "LED panel",
+    r2: "Sound system",
+    serverLogs: "Server Logs",
+    reloadLogs: "Reload Logs",
+    online: "Online", offline: "Offline",
+    ipPlaceholder: "e.g. 192.168.0.150",
+    errLoadIP: "Error loading ESP32 IP: ",
+    succSaveIP: "ESP32 IP saved successfully!",
+    errSaveIP: "Failed to save ESP32 IP: ",
+    errCommSaveIP: "Communication error saving ESP32 IP: ",
+    errLoadLogs: "Error loading logs: ",
+    errLoadStatus: "Error loading ESP32 status: "
+  },
+  fr: {
+    configTitle: "Configuration du Controle",
+    panel: "Panneau",
+    setIpTitle: "Definir l'IP du Controle",
+    save: "Enregistrer",
+    espFeedback: "Retour ESP32",
+    statusLabel: "Statut:",
+    ipLabel: "IP:",
+    irVolumes: "Volumes IR:",
+    relayStates: "Etats des Reles:",
+    r1: "Panneau LED",
+    r2: "Système audio",
+    serverLogs: "Journaux du Serveur",
+    reloadLogs: "Recharger les journaux",
+    online: "En ligne", offline: "Hors ligne",
+    ipPlaceholder: "ex : 192.168.0.150",
+    errLoadIP: "Erreur lors du chargement de l'IP de l'ESP32: ",
+    succSaveIP: "IP de l'ESP32 enregistree avec succes!",
+    errSaveIP: "Echec de l'enregistrement de l'IP de l'ESP32: ",
+    errCommSaveIP: "Erreur de communication lors de l'enregistrement de l'IP de l'ESP32: ",
+    errLoadLogs: "Erreur lors du chargement des journaux: ",
+    errLoadStatus: "Erreur lors du chargement de l'etat de l'ESP32: "
+  },
+  it: {
+    configTitle: "Configurazione del Controllo",
+    panel: "Pannello",
+    setIpTitle: "Imposta IP del Controllo",
+    save: "Salva",
+    espFeedback: "Feedback ESP32",
+    statusLabel: "Stato:",
+    ipLabel: "IP:",
+    irVolumes: "Volumi IR:",
+    relayStates: "Stati dei Rele:",
+    r1: "Pannello LED",
+    r2: "Sistema audio",
+    serverLogs: "Log del Server",
+    reloadLogs: "Ricarica Log",
+    online: "Online", offline: "Offline",
+    ipPlaceholder: "es: 192.168.0.150",
+    errLoadIP: "Errore nel caricare l'IP dell'ESP32: ",
+    succSaveIP: "IP dell'ESP32 salvato con successo!",
+    errSaveIP: "Errore nel salvare l'IP dell'ESP32: ",
+    errCommSaveIP: "Errore di comunicazione salvando l'IP dell'ESP32: ",
+    errLoadLogs: "Errore nel caricare i log: ",
+    errLoadStatus: "Errore nel caricare lo stato dell'ESP32: "
+  },
+  de: {
+    configTitle: "Steuerungskonfiguration",
+    panel: "Panel",
+    setIpTitle: "Controller-IP festlegen",
+    save: "Speichern",
+    espFeedback: "ESP32-Ruckmeldung",
+    statusLabel: "Status:",
+    ipLabel: "IP:",
+    irVolumes: "IR-Lautstarken:",
+    relayStates: "Relaiszustande:",
+    r1: "LED-Panel",
+    r2: "Soundsystem",
+    serverLogs: "Serverprotokolle",
+    reloadLogs: "Protokolle neu laden",
+    online: "Online", offline: "Offline",
+    ipPlaceholder: "z. B. 192.168.0.150",
+    errLoadIP: "Fehler beim Laden der ESP32-IP: ",
+    succSaveIP: "ESP32-IP erfolgreich gespeichert!",
+    errSaveIP: "Fehler beim Speichern der ESP32-IP: ",
+    errCommSaveIP: "Kommunikationsfehler beim Speichern der ESP32-IP: ",
+    errLoadLogs: "Fehler beim Laden der Protokolle: ",
+    errLoadStatus: "Fehler beim Laden des ESP32-Status: "
+  }
+};
+
+let LANG = localStorage.getItem('lang') || (navigator.language || 'pt').slice(0, 2);
+if (!I18N[LANG]) LANG = 'pt';
+
+function applyI18n(){
+  const map = I18N[LANG];
+
+  document.querySelectorAll('.lang-btn').forEach(b=>{
+    b.setAttribute('aria-current', b.dataset.lang === LANG ? 'true' : 'false');
+  });
+
+    const sel = document.getElementById('langSelect');
+  if (sel) sel.value = LANG;
+
+document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key = el.getAttribute('data-i18n');
+    if (map[key] !== undefined){
+      el.textContent = map[key];
+    }
+  });
+
+  const ip = document.getElementById('esp_ip');
+  if (ip) ip.setAttribute('placeholder', map.ipPlaceholder);
+
+  const st = document.getElementById('esp-feedback-status');
+  if (st) {
+    const isOnline = st.dataset.state === 'on';
+    st.textContent = isOnline ? map.online : map.offline;
+  }
+}
+
+document.addEventListener('click', (e)=>{
+  const btn = e.target.closest('.lang-btn');
+  if (!btn) return;
+  LANG = btn.dataset.lang;
+  localStorage.setItem('lang', LANG);
+  applyI18n();
+});
+
+
+document.addEventListener('change', (e)=>{
+  const sel = e.target.closest('#langSelect');
+  if (!sel) return;
+  LANG = sel.value;
+  localStorage.setItem('lang', LANG);
+  applyI18n();
+});
+function t(key){ return (I18N[LANG] && I18N[LANG][key]) || key; }
+function tOnline(){ return I18N[LANG].online; }
+function tOffline(){ return I18N[LANG].offline; }
+
+document.addEventListener('DOMContentLoaded', applyI18n);
+</script>
+
+<!-- === Logica da pagina esp.html (IP, status, logs) === -->
+<script>
+const $ = sel => document.querySelector(sel);
+
+function showError(elementSelector, message) {
+  const el = $(elementSelector);
+  if (el) {
+    el.textContent = message;
+    el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), 5000);
+  }
+  console.error(message);
+}
+
+function showSuccess(elementSelector, message) {
+  const el = $(elementSelector);
+  if (el) {
+    el.textContent = message;
+    el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), 3000);
+  }
+}
+
+async function api(path, method = 'GET', body = null){
+  const opt = { method, headers: {'Content-Type': 'application/json'} };
+  if (body) opt.body = JSON.stringify(body);
+  const r = await fetch(path, opt);
+  if (!r.ok) throw new Error('HTTP ' + r.status + ': ' + (await r.text()));
+  return r.json();
+}
+
+async function loadIp(){
+  try {
+    const j = await api('/api/esp-ip');
+    $('#esp_ip').value = j.esp_ip || j.ip || '';
+  } catch (error) {
+    showError('#esp-ip-error', t('errLoadIP') + error.message);
+  }
+}
+
+async function saveIp(){
+  const ip = $('#esp_ip').value.trim();
+  if (!ip){
+    showError('#esp-ip-error', t('errSaveIP') + 'IP invalido');
+    return;
+  }
+  try {
+    const j = await api('/api/esp-ip', 'POST', { ip });
+    if (j.ok) {
+      showSuccess('#esp-ip-success', t('succSaveIP'));
+      loadEspFeedback();
+    } else {
+      showError('#esp-ip-error', t('errSaveIP') + (j.error || 'Erro desconhecido'));
+    }
+  } catch (error) {
+    showError('#esp-ip-error', t('errCommSaveIP') + error.message);
+  }
+}
+
+async function loadLogs(){
+  try {
+    const j = await api('/api/logs?n=300');
+    $('#logs').textContent = (j.lines || []).join('\n');
+    $('#logs').scrollTop = $('#logs').scrollHeight;
+  } catch (error) {
+    showError('#esp-feedback-error', t('errLoadLogs') + error.message);
+  }
+}
+
+async function loadEspFeedback(){
+  try {
+    const j = await api('/api/status');
+    if (j.ok && j.state){
+      updateEspFeedbackUI(j.state);
+    } else {
+      throw new Error('Estado invalido');
+    }
+  } catch (error) {
+    showError('#esp-feedback-error', t('errLoadStatus') + error.message);
+    updateEspFeedbackUI({});
+  }
+}
+
+function updateEspFeedbackUI(espState) {
+  const isOnline = espState && espState.ip;
+
+  $('#esp-feedback-status').textContent = isOnline ? tOnline() : tOffline();
+  $('#esp-feedback-status').dataset.state = isOnline ? 'on' : 'off';
+  $('#esp-status-indicator').className =
+    'status-indicator ' + (isOnline ? 'status-online' : 'status-offline');
+
+  $('#esp-feedback-ip').textContent = espState.ip || 'N/A';
+
+  if (espState.volumes){
+    const quiosqueMuted = espState.mute_state?.QUIOSQUE === true;
+    const piscinaMuted  = espState.mute_state?.PISCINA === true;
+
+    $('#esp-feedback-quiosque-vol').textContent =
+      espState.volumes.quiosque !== undefined ? espState.volumes.quiosque : '--';
+    $('#esp-feedback-quiosque-mute').style.display =
+      quiosqueMuted ? 'inline' : 'none';
+
+    $('#esp-feedback-piscina-vol').textContent =
+      espState.volumes.piscina !== undefined ? espState.volumes.piscina : '--';
+    $('#esp-feedback-piscina-mute').style.display =
+      piscinaMuted ? 'inline' : 'none';
+  } else {
+    $('#esp-feedback-quiosque-vol').textContent = '--';
+    $('#esp-feedback-piscina-vol').textContent  = '--';
+  }
+
+  if (espState.relays){
+    for (const id of ['r1','r2']){
+      const el = $('#esp-feedback-' + id);
+      if (el){
+        const on = espState.relays[id];
+        el.textContent = on ? 'ON' : 'OFF';
+        el.style.color = on ? '#388e3c' : '#d32f2f';
+      }
+    }
+  } else {
+    for (const id of ['r1','r2']){
+      const el = $('#esp-feedback-' + id);
+      if (el) el.textContent = '--';
+    }
+  }
+}
+
+document.getElementById('save').onclick = saveIp;
+document.getElementById('reload-logs').onclick = loadLogs;
+
+
+async function syncRemote(what){
+  const outEl = document.getElementById('sync-result');
+  if (outEl) outEl.textContent = 'Sincronizando ' + what + '...';
+  try{
+    const r = await fetch('/api/sync-remote', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({what: what, force: true})
+    });
+    const j = await r.json().catch(()=>({}));
+    if (outEl) outEl.textContent = (j && j.ok) ? ('OK: ' + what) : ('Falha: ' + what);
+  }catch(e){
+    if (outEl) outEl.textContent = 'Erro ao sincronizar: ' + (e && e.message ? e.message : e);
+  }
+}
+
+const b1 = document.getElementById('btn-sync-ui');
+if (b1) b1.onclick = () => syncRemote('ui');
+const b2 = document.getElementById('btn-sync-videos');
+if (b2) b2.onclick = () => syncRemote('videos');
+
+loadIp();
+loadLogs();
+loadEspFeedback();
+setInterval(loadEspFeedback, 3000);
+</script>
+</body>
+</html>
