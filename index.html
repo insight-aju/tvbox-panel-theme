@@ -98,25 +98,6 @@
           <button class="btn" id="btnStopShow" data-i18n="openStopShow">Encerrar</button>
         </div>
       </div>
-
-      <!-- Upgrade / Legado -->
-      <div class="row" style="margin-top:10px; gap:10px; flex-wrap:wrap">
-        <button class="btn btn-upgrade" id="btnUpdateProgram">Atualizar Programa</button>
-        <button class="btn btn-legacy" id="btnDowngradeProgram">Voltar (Legado)</button>
-        <span class="muted" id="updMini" style="margin-left:auto"> </span>
-      </div>
-
-      <div id="updateBox" class="updatebox hidden">
-        <div class="row" style="justify-content:space-between; align-items:center; gap:10px">
-          <div>
-            <div class="muted" id="updStage">-</div>
-            <div class="muted" id="updFile" style="font-size:12px"> </div>
-          </div>
-          <div class="muted" id="updPct">0%</div>
-        </div>
-        <div class="progress"><div id="updBar"></div></div>
-        <pre id="updLog" class="logpre"></pre>
-      </div>
     </section>
 
     <!-- ===================== CARD: VOLUME MASTER ===================== -->
@@ -389,85 +370,6 @@ function tStatusOnline(){ return I18N[LANG].online; }
 function tStatusOffline(){ return I18N[LANG].offline; }
 
 document.addEventListener('DOMContentLoaded', applyI18n);
-
-// ===================== UPDATE / DOWNGRADE (PROGRAMA) =====================
-let updTimer = null;
-
-function showUpdateBox(show){
-  const box = $('#updateBox');
-  if(!box) return;
-  box.classList.toggle('hidden', !show);
-}
-
-async function fetchUpdateLog(){
-  try{
-    const j = await api('/api/update-log?n=120');
-    if(j.ok){
-      $('#updLog').textContent = j.lines.join('\n');
-      $('#updLog').scrollTop = $('#updLog').scrollHeight;
-    }
-  }catch(e){}
-}
-
-async function pollUpdate(){
-  try{
-    const j = await api('/api/update-status');
-    if(!j.ok) return;
-    const s = j.status || {};
-    $('#updStage').textContent = s.stage || '-';
-    $('#updFile').textContent = s.current || '';
-    const pct = (s.percent ?? 0);
-    $('#updPct').textContent = pct + '%';
-    $('#updBar').style.width = pct + '%';
-    if(s.running){
-      $('#updMini').textContent = 'Atualizando... ' + pct + '%';
-    }else{
-      if(s.summary){
-        const sum = s.summary;
-        $('#updMini').textContent = `Atualizou ${sum.updated} | Pulou ${sum.skipped} | Falhou ${sum.failed}`;
-      }else if(s.error){
-        $('#updMini').textContent = 'Erro: ' + s.error;
-      }else{
-        $('#updMini').textContent = '';
-      }
-      if(updTimer){
-        clearInterval(updTimer);
-        updTimer = null;
-      }
-    }
-    await fetchUpdateLog();
-  }catch(e){}
-}
-
-async function startUpdate(kind){
-  showUpdateBox(true);
-  await fetchUpdateLog();
-  if(updTimer) clearInterval(updTimer);
-  updTimer = setInterval(pollUpdate, 700);
-  // dispara ação
-  try{
-    if(kind === 'upgrade'){
-      await api('/api/update-program', 'POST', {});
-    }else{
-      await api('/api/downgrade-program', 'POST', {});
-    }
-  }catch(e){
-    $('#updMini').textContent = 'Erro: ' + (e?.message || e);
-  }finally{
-    // garante uma última leitura
-    setTimeout(pollUpdate, 600);
-  }
-}
-
-document.addEventListener('DOMContentLoaded', ()=>{
-  const b1 = $('#btnUpdateProgram');
-  const b2 = $('#btnDowngradeProgram');
-  if(b1) b1.addEventListener('click', ()=> startUpdate('upgrade'));
-  if(b2) b2.addEventListener('click', ()=> startUpdate('downgrade'));
-  // restaura status se algo estava rodando
-  pollUpdate();
-});
-
 </script>
 
 <!-- === Logica principal do painel (volumes, reles, apps) === -->
