@@ -1,72 +1,31 @@
-/* style.css - TEMA LIGHT (v2.0) - remoto para teste (profissional/legível) */
-
-:root{
-  color-scheme: light;
-
-  /* Paleta base */
-  --bg: #f2f4f8;
-  --text: #0f172a;
-  --muted: #475569;
-
-  /* Superfícies */
-  --header-bg: rgba(255,255,255,.72);
-  --card-bg: rgba(255,255,255,.86);     /* transparência do card (0.82–0.90) */
-  --card-border: rgba(15,23,42,.10);
-
-  /* Controles */
-  --btn-bg: rgba(255,255,255,.92);
-  --btn-border: rgba(15,23,42,.14);
-  --btn-hover: rgba(255,255,255,.98);
-
-  /* Acentos */
-  --accent: #ff8c00;
-  --danger: #e53935;
-  --success: #2e7d32;
-
-  /* Sombras e foco */
-  --shadow: 0 10px 28px rgba(2, 6, 23, .12);
-  --shadow-sm: 0 6px 18px rgba(2, 6, 23, .10);
-  --ring: 0 0 0 3px rgba(255, 140, 0, .22);
-
-  /* Raios */
-  --radius: 16px;
-  --radius-sm: 12px;
+:root {
+  /* Tema escuro padrao */
+  color-scheme: dark;
 }
 
-html, body { height: 100%; }
-
-/* ====== FUNDO (SEM PELÍCULA GLOBAL) ====== */
+/* ====== LAYOUT BASE (ambas as paginas) ====== */
 body {
   margin: 0;
-  background-color: var(--bg);                 /* fallback */
   background-image: url('images/background.jpg');
   background-size: cover;
   background-position: center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;               /* desktop ok */
-  color: var(--text);
+  background-attachment: fixed;
+  color: #eef;
   font-family: system-ui, Segoe UI, Roboto, Arial;
 }
 
-@media (max-width: 720px){
-  body{ background-attachment: scroll; }       /* mobile mais estável */
-}
-
-/* ====== HEADER ====== */
 header {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 16px 18px;
-  border-bottom: 1px solid var(--card-border);
-  background-color: var(--header-bg);
+  border-bottom: 1px solid #1a2633;
+  background-color: rgba(11, 15, 20, 0.8);
   backdrop-filter: blur(10px);
 }
 
-header strong{ color: var(--text); }
-
-/* ====== CONTAINER ====== */
-.wrap{
+/* Container principal (wrap) – usado em index.html e esp.html */
+.wrap {
   max-width: 880px;
   margin: 0 auto;
   padding: 18px;
@@ -74,166 +33,149 @@ header strong{ color: var(--text); }
   gap: 16px;
 }
 
-/* ====== CARDS ====== */
+/* Cartoes (cards) de conteudo */
 .card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius);
+  background: rgba(17, 23, 34, 0.5);
+  border: 1px solid #1a2633;
+  border-radius: 16px;
   padding: 16px;
-  box-shadow: var(--shadow);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .25);
   backdrop-filter: blur(10px);
 }
 
-/* títulos dentro do card, se houver */
-.card h2, .card h3, .card h4{
-  margin: 0 0 10px 0;
-  color: var(--text);
-}
-
-/* Linhas flex genéricas */
-.row{
+/* Linhas flex genericas */
+.row {
   display: flex;
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
 }
 
-/* ====== TIPOGRAFIA AUXILIAR ====== */
-.muted{
-  color: var(--muted);
+/* ====== BOTOES E TIPOGRAFIA ====== */
+.btn {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid #263344;
+  background: #141c28;
+  color: #eef;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-danger {
+  background: #ff6b6b;
+  color: #2a0b0b;
+  border-color: #ff6b6b;
+}
+
+/* Texto auxiliar (ex: status, legendas) */
+.muted {
+  opacity: .75;
   font-size: 12px;
 }
 
-/* Número grande de volume */
-.volNum{
+/* Numero grande de volume */
+.volNum {
   font-size: 28px;
   font-weight: 800;
   min-width: 64px;
   text-align: center;
-  color: var(--text);
 }
 
-/* ====== SLIDERS ====== */
-input[type=range]{
+/* Sliders de volume */
+input[type=range] {
   width: 100%;
-  accent-color: var(--accent);
+  accent-color: #ff8c00; /* cor do "track" do range */
 }
 
 /* Pequenos grids internos */
-.grid{
+.grid {
   display: grid;
   gap: 12px;
 }
 
-/* ====== BOTOES ====== */
-.btn{
-  padding: 10px 14px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--btn-border);
-  background: var(--btn-bg);
-  color: var(--text);
-  cursor: pointer;
+/* D-pad legado (caso seja usado futuramente) */
+.dpad {
+  display: grid;
+  grid-template-columns: 70px 70px 70px;
+  gap: 10px;
+  justify-content: center;
+}
+
+.dpad .btn {
+  height: 52px;
   font-weight: 700;
-  box-shadow: var(--shadow-sm);
-  transition: transform .08s ease, box-shadow .12s ease, background-color .12s ease, border-color .12s ease;
 }
 
-.btn:hover{
-  background: var(--btn-hover);
-  box-shadow: 0 12px 26px rgba(2, 6, 23, .14);
+.wide {
+  grid-column: 1 / span 3;
 }
 
-.btn:active{
-  transform: translateY(1px);
-  box-shadow: 0 8px 18px rgba(2, 6, 23, .12);
-}
-
-.btn:focus-visible{
-  outline: none;
-  box-shadow: var(--shadow-sm), var(--ring);
-}
-
-.btn[disabled], .btn:disabled{
-  opacity: .55;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-/* Danger (Mudo) */
-.btn-danger{
-  background: rgba(229,57,53,.12);
-  color: #7f1d1d;
-  border-color: rgba(229,57,53,.35);
-  box-shadow: none;
-}
-
-.btn-danger:hover{ background: rgba(229,57,53,.16); }
-
-/* ====== CONTROLES POR AMBIENTE (PADRÃO) ====== */
-.control-group{
-  flex: 1;                 /* ocupa metade do card (lado a lado) */
-  min-width: 240px;        /* evita ficar esmagado */
+/* ====== CONTROLES POR AMBIENTE (card de ambientes em index.html) ====== */
+.control-group {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: stretch;    /* slider ocupa a largura do grupo */
+  align-items: center;
   gap: 10px;
-  text-align: center;
-  padding: 0 6px;
 }
 
-.control-group > .row{
-  justify-content: center; /* centraliza o botão Mudo */
-}
-
-.control-group .btn{
-  align-self: center;
-}
-
-/* ====== RELES / ESTADOS ====== */
-.relay-controls{
+/* ====== CONTROLE DE RELES (card de acionamentos em index.html) ====== */
+.relay-controls {
   display: flex;
   gap: 10px;
   justify-content: center;
   flex-wrap: wrap;
 }
 
-.relay-toggle.active{
-  background: rgba(46,125,50,.14);
-  border-color: rgba(46,125,50,.38);
-  color: #14532d;
-  box-shadow: 0 0 0 3px rgba(46,125,50,.18);
+/* Estado visual quando rele esta ativo
+   Usado nos botoes .relay-toggle em index.html */
+.relay-toggle.active {
+  background-color: #4CAF50;
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(0, 255, 140, 0.8);
   transform: translateY(-1px);
 }
 
-/* ====== LOGS (esp.html) ====== */
+/* ====== LOGS & FEEDBACK (esp.html) ====== */
+/* Caixa de logs no esp.html (card "Logs do Servidor")
+   e possivel reuso futuro no index.html */
 .logbox {
   min-height: 280px;
   max-height: 300px;
   overflow-y: auto;
-
-  background: rgba(255,255,255,.78) !important;
-  color: #0b1220;
-  border: 1px solid var(--card-border);
+  background: rgba(11, 16, 32, 0.3) !important; /* #0b1020 */
+  color: #e6edf3;
   border-radius: 12px;
   padding: 12px;
-
   white-space: pre-wrap;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-family: monospace;
   font-size: 0.85em;
 }
 
-/* Mensagens inline */
-.error-message, .success-message{
-  font-size: .85rem;
+/* Mensagens inline de erro/sucesso (esp.html – card IP / feedback) */
+.error-message,
+.success-message {
+  font-size: 0.85rem;
   margin-top: 5px;
   display: none;
 }
-.error-message{ color: #b91c1c; }
-.success-message{ color: #166534; }
-.error-message.show, .success-message.show{ display: block; }
 
-/* Indicador de status */
-.status-indicator{
+.error-message {
+  color: #d32f2f;
+}
+
+.success-message {
+  color: #388e3c;
+}
+
+.error-message.show,
+.success-message.show {
+  display: block;
+}
+
+/* Indicador de status (bolinha verde/vermelha do ESP em esp.html) */
+.status-indicator {
   display: inline-block;
   width: 12px;
   height: 12px;
@@ -241,16 +183,25 @@ input[type=range]{
   margin-right: 8px;
   vertical-align: middle;
 }
-.status-online{ background-color: var(--success); }
-.status-offline{ background-color: var(--danger); }
 
-/* ====== SELETOR DE IDIOMA ====== */
-.lang-picker{
+.status-online {
+  background-color: #388e3c;
+}
+
+.status-offline {
+  background-color: #d32f2f;
+}
+
+/* ====== SELECIONADOR DE IDIOMA (index.html + esp.html) ====== */
+/* Container das linguagens no header */
+.lang-picker {
   display: flex;
   gap: 8px;
   margin-left: 16px;
 }
 
+
+/* Select (dropdown) compacto para idioma – usado só no mobile em modo retrato */
 .lang-select-wrap{
   display: none;
   margin-left: 16px;
@@ -260,25 +211,36 @@ input[type=range]{
   height: 32px;
   border-radius: 999px;
   padding: 0 10px;
-  border: 1px solid var(--btn-border);
-  background: rgba(255,255,255,.92);
-  color: var(--text);
-  font-weight: 800;
+  border: 1px solid #263344;
+  background: #141c28;
+  color: #eef;
+  font-weight: 700;
   font-size: 13px;
+  opacity: .95;
 }
 
-.lang-select:focus{ outline: none; box-shadow: var(--ring); }
+.lang-select:focus{
+  outline: 2px solid #ff8c00;
+  outline-offset: 2px;
+}
 
+/* Mostra o select no retrato (economiza altura) e esconde os botoes */
 @media (max-width: 720px) and (orientation: portrait){
   .lang-picker{ display: none; }
-  .lang-select-wrap{ display: inline-flex; margin-left: 0; }
+  .lang-select-wrap{ display: inline-flex; }
+  .lang-select-wrap{ margin-left: 0; }
 }
+
+/* No landscape (celular deitado) mantem os botoes e esconde o select */
 @media (max-width: 720px) and (orientation: landscape){
   .lang-select-wrap{ display: none; }
   .lang-picker{ display: flex; }
 }
-
-.lang-btn{
+/* Botao de idioma:
+   - usado em index.html e esp.html
+   - conteudo interno: span.lang-flag + span.lang-code
+*/
+.lang-btn {
   min-width: 32px;
   height: 28px;
   padding: 0 8px;
@@ -289,72 +251,133 @@ input[type=range]{
   gap: 4px;
   font-size: 13px;
   line-height: 1;
-  border: 1px solid var(--btn-border);
-  background: rgba(255,255,255,.92);
-  color: var(--text);
+  border: 1px solid #263344;
+  background: #141c28;
+  color: #eef;
   cursor: pointer;
-  opacity: .90;
-  box-shadow: 0 6px 16px rgba(2, 6, 23, .10);
+  opacity: .85;
 }
-.lang-btn:hover{ opacity: 1; }
 
-.lang-btn .lang-flag{ font-size: 16px; }
-.lang-btn .lang-code{
+/* Flag (emoji) – pode sumir em alguns browsers, mas o texto (lang-code) fica */
+.lang-btn .lang-flag {
+  font-size: 16px;
+}
+
+/* Codigo da lingua (PT, ES, EN...) – garante leitura mesmo sem emoji */
+.lang-btn .lang-code {
   font-size: 11px;
   text-transform: uppercase;
-  color: var(--muted);
 }
 
-.lang-btn[aria-current="true"]{
-  box-shadow: 0 6px 16px rgba(2, 6, 23, .10), var(--ring);
+/* Destaque para lingua ativa */
+.lang-btn[aria-current="true"] {
+  outline: 2px solid #ff8c00;
   opacity: 1;
 }
 
 /* ====== CARD: APLICATIVOS (index.html) ====== */
-.card .app-row{
+/* Layout interno do card "Aplicativos"
+   HTML: section.card > div.row.app-row
+   Botoes envolvidos:
+     #btnWelcome, #btnYouTube, #btnHome, #btnStartShow, #btnStopShow
+   Scripts: ver index.html – secao "Controles principais do painel"  */
+.card .app-row {
   display: flex;
   align-items: center;
   gap: 12px;
 }
-.app-left, .app-center, .app-right{
+
+.app-left,
+.app-center,
+.app-right {
   flex: 1;
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.app-left{ justify-content: flex-start; }
-.app-center{ justify-content: center; }
-.app-right{ justify-content: flex-end; }
 
-/* ====== RESPONSIVO ====== */
-@media (max-width: 720px){
-  header{ flex-wrap: wrap; }
-  header strong{ flex: 1 1 100%; }
-  header nav{ flex: 1 1 auto; }
+.app-left {
+  justify-content: flex-start;
+}
 
-  .lang-picker{ flex-wrap: wrap; margin-left: 0; }
-  .wrap{ padding: 12px; }
+.app-center {
+  justify-content: center;
+}
 
-  .card .app-row{ flex-direction: column; align-items: stretch; }
-  .app-left, .app-center, .app-right{
+.app-right {
+  justify-content: flex-end;
+}
+
+/* (OUTROS estilos especificos podem ser adicionados abaixo conforme novos cards/features) */
+
+
+/* ====== RESPONSIVO (celular) ====== */
+@media (max-width: 720px) {
+  header { flex-wrap: wrap; }
+  header strong { flex: 1 1 100%; }
+  header nav { flex: 1 1 auto; }
+
+  .lang-picker { flex-wrap: wrap; margin-left: 0; }
+
+  .wrap { padding: 12px; }
+
+  /* Card Aplicativos: empilha e evita estouro horizontal */
+  .card .app-row { flex-direction: column; align-items: stretch; }
+  .app-left, .app-center, .app-right {
     width: 100%;
     justify-content: center;
     flex-wrap: wrap;
   }
-  .app-left .btn, .app-center .btn, .app-right .btn{ width: 100%; }
+  .app-left .btn, .app-center .btn, .app-right .btn {
+    width: 100%;
+  }
 
-  .relay-controls{ justify-content: center; }
-  .relay-controls .btn{ flex: 1 1 calc(50% - 10px); min-width: 140px; }
+  /* Reles / acoes: vira 2 colunas (ou 1 se ficar apertado) */
+  .relay-controls { justify-content: center; }
+  .relay-controls .btn { flex: 1 1 calc(50% - 10px); min-width: 140px; }
 
-  .control-group{ width: 100%; min-width: 0; }
+  /* Ambientes: stack */
+  .control-group { width: 100%; min-width: 0; }
 }
 
-/* Marcador de versão (apenas para teste do remoto) */
-.ver{
-  font-size: 12px;
-  padding: 3px 8px;
+
+/* ===== Upgrade / Legado ===== */
+.btn-upgrade{ border: 1px solid rgba(0,0,0,.15); }
+.btn-legacy{ border: 1px solid rgba(0,0,0,.15); opacity: .95; }
+
+.updatebox{
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,.10);
+  background: rgba(255,255,255,.65); /* ajuste a transparencia aqui */
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.updatebox.hidden{ display:none; }
+
+.progress{
+  width: 100%;
+  height: 10px;
   border-radius: 999px;
-  background: rgba(15, 23, 42, .06);
-  color: var(--text);
-  border: 1px solid rgba(15, 23, 42, .10);
+  overflow: hidden;
+  background: rgba(0,0,0,.10);
+  margin: 8px 0 10px;
+}
+.progress > div{
+  height: 100%;
+  width: 0%;
+  background: rgba(0,0,0,.35);
+  transition: width .15s linear;
+}
+
+.logpre{
+  max-height: 160px;
+  overflow: auto;
+  white-space: pre-wrap;
+  margin: 0;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(0,0,0,.05);
+  font-size: 12px;
 }

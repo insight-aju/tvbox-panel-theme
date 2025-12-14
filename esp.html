@@ -19,7 +19,7 @@
       - GET      /api/logs     -> ultimas linhas de log do servidor.
   -->
   <header>
-    <strong data-i18n="configTitle">Configuracao do Controle</strong> <span class="ver">v2.0</span>
+    <strong data-i18n="configTitle">Configuracao do Controle</strong>
     <nav><a href="index.html" data-i18n="panel">Painel</a></nav>
 
     <!-- Seletor de idioma (botoes pt/es/en/fr/it/de)
@@ -65,6 +65,27 @@
   </header>
 
   <main class="wrap">
+  <!-- ===================== CARD: UPGRADE / LEGADO ===================== -->
+  <section class="card">
+    <h3 style="margin-top:0">Programa</h3>
+    <div class="row" style="gap:10px; flex-wrap:wrap">
+      <button class="btn btn-upgrade" id="btnUpdateProgram">Atualizar Programa</button>
+      <button class="btn btn-legacy" id="btnDowngradeProgram">Voltar (Legado)</button>
+      <span class="muted" id="updMini" style="margin-left:auto"> </span>
+    </div>
+    <div id="updateBox" class="updatebox hidden">
+      <div class="row" style="justify-content:space-between; align-items:center; gap:10px">
+        <div>
+          <div class="muted" id="updStage">-</div>
+          <div class="muted" id="updFile" style="font-size:12px"> </div>
+        </div>
+        <div class="muted" id="updPct">0%</div>
+      </div>
+      <div class="progress"><div id="updBar"></div></div>
+      <pre id="updLog" class="logpre"></pre>
+    </div>
+  </section>
+
     <!-- CARD: Definir IP do controle -->
     <section class="card">
       <h3 data-i18n="setIpTitle">Definir IP do Controle</h3>
@@ -115,8 +136,11 @@
       <div class="row" style="gap:10px; flex-wrap: wrap;">
         <button class="btn" id="btn-sync-ui">Sincronizar UI</button>
         <button class="btn" id="btn-sync-videos">Sincronizar Vídeos</button>
+        <button class="btn" id="btn-update-program">Atualizar Programa</button>
+        <button class="btn" id="btn-downgrade-program">Voltar (Legado)</button>
       </div>
       <div class="muted" id="sync-result" style="margin-top:10px;"></div>
+      <pre id="sync-detail" class="logbox" style="max-height:180px; white-space:pre-wrap; margin-top:10px;"></pre>
     </section>
 
 <!-- CARD: Logs do servidor -->
@@ -323,6 +347,85 @@ function tOnline(){ return I18N[LANG].online; }
 function tOffline(){ return I18N[LANG].offline; }
 
 document.addEventListener('DOMContentLoaded', applyI18n);
+
+// ===================== UPDATE / DOWNGRADE (PROGRAMA) =====================
+let updTimer = null;
+
+function showUpdateBox(show){
+  const box = $('#updateBox');
+  if(!box) return;
+  box.classList.toggle('hidden', !show);
+}
+
+async function fetchUpdateLog(){
+  try{
+    const j = await api('/api/update-log?n=120');
+    if(j.ok){
+      $('#updLog').textContent = j.lines.join('\n');
+      $('#updLog').scrollTop = $('#updLog').scrollHeight;
+    }
+  }catch(e){}
+}
+
+async function pollUpdate(){
+  try{
+    const j = await api('/api/update-status');
+    if(!j.ok) return;
+    const s = j.status || {};
+    $('#updStage').textContent = s.stage || '-';
+    $('#updFile').textContent = s.current || '';
+    const pct = (s.percent ?? 0);
+    $('#updPct').textContent = pct + '%';
+    $('#updBar').style.width = pct + '%';
+    if(s.running){
+      $('#updMini').textContent = 'Atualizando... ' + pct + '%';
+    }else{
+      if(s.summary){
+        const sum = s.summary;
+        $('#updMini').textContent = `Atualizou ${sum.updated} | Pulou ${sum.skipped} | Falhou ${sum.failed}`;
+      }else if(s.error){
+        $('#updMini').textContent = 'Erro: ' + s.error;
+      }else{
+        $('#updMini').textContent = '';
+      }
+      if(updTimer){
+        clearInterval(updTimer);
+        updTimer = null;
+      }
+    }
+    await fetchUpdateLog();
+  }catch(e){}
+}
+
+async function startUpdate(kind){
+  showUpdateBox(true);
+  await fetchUpdateLog();
+  if(updTimer) clearInterval(updTimer);
+  updTimer = setInterval(pollUpdate, 700);
+  // dispara ação
+  try{
+    if(kind === 'upgrade'){
+      await api('/api/update-program', 'POST', {});
+    }else{
+      await api('/api/downgrade-program', 'POST', {});
+    }
+  }catch(e){
+    $('#updMini').textContent = 'Erro: ' + (e?.message || e);
+  }finally{
+    // garante uma última leitura
+    setTimeout(pollUpdate, 600);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const b1 = $('#btnUpdateProgram');
+  const b2 = $('#btnDowngradeProgram');
+  if(b1) b1.addEventListener('click', ()=> startUpdate('upgrade'));
+  if(b2) b2.addEventListener('click', ()=> startUpdate('downgrade'));
+  // restaura status se algo estava rodando
+  pollUpdate();
+});
+
 </script>
 
 <!-- === Logica da pagina esp.html (IP, status, logs) === -->
@@ -459,7 +562,9 @@ document.getElementById('reload-logs').onclick = loadLogs;
 
 async function syncRemote(what){
   const outEl = document.getElementById('sync-result');
+  const detEl = document.getElementById('sync-detail');
   if (outEl) outEl.textContent = 'Sincronizando ' + what + '...';
+  if (detEl) detEl.textContent = '';
   try{
     const r = await fetch('/api/sync-remote', {
       method: 'POST',
@@ -467,9 +572,43 @@ async function syncRemote(what){
       body: JSON.stringify({what: what, force: true})
     });
     const j = await r.json().catch(()=>({}));
-    if (outEl) outEl.textContent = (j && j.ok) ? ('OK: ' + what) : ('Falha: ' + what);
+
+    if (!j || !j.ok){
+      if (outEl) outEl.textContent = 'Falha: ' + what;
+      if (detEl) detEl.textContent = JSON.stringify(j, null, 2);
+      await loadLogs();
+      return;
+    }
+
+    const part = j[what] || (what==='all' ? j : null);
+    const s = (part && part.summary) ? part.summary : (j.summary || {});
+    const msg = `OK: ${what} — atualizou ${s.updated||0}, pulou ${s.skipped||0}, falhou ${s.failed||0} (total ${s.total||0})`;
+    if (outEl) outEl.textContent = msg;
+
+    if (detEl){
+      // lista curta de itens alterados/erros
+      let lines = [];
+      if (part && part.results){
+        const keys = Object.keys(part.results);
+        for (const k of keys){
+          const it = part.results[k] || {};
+          if (it.changed || it.source==='remote'){
+            lines.push(`ATUALIZOU: ${k} (${it.bytes||it.size||0} bytes)`);
+          } else if (it.error){
+            lines.push(`FALHOU: ${k} — ${it.error}`);
+          } else if (it.skipped){
+            lines.push(`PULOU: ${k}`);
+          }
+        }
+      }
+      detEl.textContent = lines.length ? lines.join('
+') : '';
+    }
+
+    await loadLogs();
   }catch(e){
     if (outEl) outEl.textContent = 'Erro ao sincronizar: ' + (e && e.message ? e.message : e);
+    if (detEl) detEl.textContent = String(e);
   }
 }
 
