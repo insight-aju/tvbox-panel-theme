@@ -19,7 +19,7 @@
       - GET      /api/logs     -> ultimas linhas de log do servidor.
   -->
   <header>
-    <strong data-i18n="configTitle">Configuracao do Controle</strong> <span class="ver">v2.0</span>
+    <strong data-i18n="configTitle">Configuracao do Controle</strong>
     <nav><a href="index.html" data-i18n="panel">Painel</a></nav>
 
     <!-- Seletor de idioma (botoes pt/es/en/fr/it/de)
@@ -117,6 +117,13 @@
         <button class="btn" id="btn-sync-videos">Sincronizar Vídeos</button>
       </div>
       <div class="muted" id="sync-result" style="margin-top:10px;"></div>
+      <div id="sync-progress-wrap" style="margin-top:10px; display:none;">
+        <div style="height:10px; background: rgba(0,0,0,.12); border-radius:999px; overflow:hidden;">
+          <div id="sync-bar" style="height:10px; width:0%; background: rgba(56,142,60,.9); transition: width .2s ease;"></div>
+        </div>
+        <div class="muted" id="sync-percent" style="margin-top:6px;"></div>
+        <div id="sync-list" style="margin-top:10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.35;"></div>
+      </div>
     </section>
 
 <!-- CARD: Logs do servidor -->
@@ -459,7 +466,63 @@ document.getElementById('reload-logs').onclick = loadLogs;
 
 async function syncRemote(what){
   const outEl = document.getElementById('sync-result');
-  if (outEl) outEl.textContent = 'Sincronizando ' + what + '...';
+  const wrap = document.getElementById('sync-progress-wrap');
+  const bar = document.getElementById('sync-bar');
+  const pct = document.getElementById('sync-percent');
+  const list = document.getElementById('sync-list');
+
+  const show = (msg) => { if (outEl) outEl.textContent = msg || ''; };
+  const setWrap = (on) => { if (wrap) wrap.style.display = on ? 'block' : 'none'; };
+
+  const fmtBytes = (n) => {
+    n = Number(n||0);
+    if (!isFinite(n) || n<=0) return '';
+    const u = ['B','KB','MB','GB'];
+    let i=0;
+    while(n>=1024 && i<u.length-1){ n/=1024; i++; }
+    return n.toFixed(i===0?0:1) + ' ' + u[i];
+  };
+
+  const render = (payload) => {
+    const prog = payload && payload.progress ? payload.progress : {percent:0, done:0, total:0};
+    if (bar) bar.style.width = (prog.percent||0) + '%';
+    if (pct) pct.textContent = `Progresso: ${prog.percent||0}%  (${prog.done||0}/${prog.total||0})`;
+
+    if (!list) return;
+    const items = payload && payload.items ? payload.items : {};
+    const keys = Object.keys(items);
+
+    // ordena: ui primeiro, depois videos
+    keys.sort((a,b)=>{
+      const ka = (items[a].kind||'').toString();
+      const kb = (items[b].kind||'').toString();
+      if (ka===kb) return a.localeCompare(b);
+      if (ka==='ui') return -1;
+      if (kb==='ui') return 1;
+      return a.localeCompare(b);
+    });
+
+    const lines = keys.map(k=>{
+      const it = items[k] || {};
+      const st = (it.status||'').toUpperCase();
+      const reason = it.reason ? ` (${it.reason})` : '';
+      const src = it.source ? ` src=${it.source}` : '';
+      const hs = it.http_status ? ` http=${it.http_status}` : '';
+      const bts = it.bytes ? ` ${fmtBytes(it.bytes)}` : '';
+      const name = it.kind==='video' ? (it.name||k) : k;
+      const err = it.error ? `  !! ${it.error}` : '';
+      return `${st.padEnd(11)} ${name}${reason}${bts}${src}${hs}${err}`;
+    });
+
+    list.textContent = lines.join('\n');
+  };
+
+  show('Iniciando sincronização: ' + what + '...');
+  setWrap(true);
+  if (bar) bar.style.width = '0%';
+  if (pct) pct.textContent = '';
+  if (list) list.textContent = '';
+
   try{
     const r = await fetch('/api/sync-remote', {
       method: 'POST',
@@ -467,11 +530,46 @@ async function syncRemote(what){
       body: JSON.stringify({what: what, force: true})
     });
     const j = await r.json().catch(()=>({}));
-    if (outEl) outEl.textContent = (j && j.ok) ? ('OK: ' + what) : ('Falha: ' + what);
+    if (!j || !j.ok || !j.sync_id){
+      show('Falha ao iniciar sync: ' + (j && j.error ? j.error : 'sem sync_id'));
+      setWrap(false);
+      return;
+    }
+
+    const sid = j.sync_id;
+    show('Sincronizando ' + what + '...');
+
+    const t0 = Date.now();
+    const maxMs = 6 * 60 * 1000; // 6 min
+    while(true){
+      const pr = await fetch('/api/sync-progress?sync_id=' + encodeURIComponent(sid), {cache:'no-store'});
+      const pj = await pr.json().catch(()=>({}));
+      if (pj && pj.ok){
+        render(pj);
+        if (pj.status === 'done'){
+          show(`OK: ${what} (ok=${pj.summary.ok} skip=${pj.summary.skipped} fail=${pj.summary.failed} em ${pj.duration_s}s)`);
+          break;
+        }
+        if (pj.status === 'error'){
+          show(`Falha: ${what} (erro=${pj.error || 'desconhecido'})`);
+          break;
+        }
+      }else{
+        show('Erro ao ler progresso: ' + (pj && pj.error ? pj.error : ''));
+      }
+
+      if (Date.now() - t0 > maxMs){
+        show('Sync demorou demais e foi interrompido na UI (o servidor pode continuar).');
+        break;
+      }
+      await new Promise(res=>setTimeout(res, 450));
+    }
   }catch(e){
-    if (outEl) outEl.textContent = 'Erro ao sincronizar: ' + (e && e.message ? e.message : e);
+    show('Erro ao sincronizar: ' + (e && e.message ? e.message : e));
+    setWrap(false);
   }
 }
+
 
 const b1 = document.getElementById('btn-sync-ui');
 if (b1) b1.onclick = () => syncRemote('ui');
