@@ -121,6 +121,10 @@
         Forçar download (ignorar cache)
       </label>
       <div class="muted" id="sync-result" style="margin-top:10px;"></div>
+      <div class="sync-progress" style="margin-top:10px;">
+        <div class="sync-bar" id="sync-bar" style="width:0%"></div>
+      </div>
+      <div id="sync-details" class="sync-details" style="margin-top:10px;"></div>
     </section>
 
 <!-- CARD: Logs do servidor -->
@@ -463,15 +467,98 @@ document.getElementById('reload-logs').onclick = loadLogs;
 
 async function syncRemote(what){
   const outEl = document.getElementById('sync-result');
-  if (outEl) outEl.textContent = 'Sincronizando ' + what + '...';
+  const barEl = document.getElementById('sync-bar');
+  const detEl = document.getElementById('sync-details');
+
+  const force = !!document.getElementById('chkForceDownload')?.checked;
+
+  function setBar(pct){
+    if (barEl) barEl.style.width = (Math.max(0, Math.min(100, pct|0))) + '%';
+  }
+
+  function renderJob(job){
+    if (!job) return;
+
+    setBar(job.progress || 0);
+
+    const s = job.summary || {};
+    const line = `Sync ${job.what} (id=${job.sync_id}) - ${job.done ? 'FINALIZADO' : 'rodando'} | ok:${s.ok||0} skip:${s.skipped||0} fail:${s.failed||0}`;
+    if (outEl) outEl.textContent = line;
+
+    if (!detEl) return;
+
+    const items = job.items || [];
+    if (!items.length){
+      detEl.textContent = '...';
+      return;
+    }
+
+    // lista simples (sem quebrar layout)
+    detEl.innerHTML = items.map(it=>{
+      const st = it.status || '';
+      const name = it.name || '';
+      const kind = it.kind || '';
+      const src = it.source ? ` (${it.source})` : '';
+      const http = it.http ? ` http:${it.http}` : '';
+      const bytes = it.bytes ? ` ${it.bytes}B` : '';
+      const err = it.error ? ` - ${it.error}` : '';
+      return `<div class="sync-item ${st}"><span class="tag">${kind}</span> <b>${name}</b> <span class="st">${st}</span>${src}${http}${bytes}${err}</div>`;
+    }).join('');
+  }
+
+  async function poll(syncId){
+    const url = '/api/sync-progress?sync_id=' + encodeURIComponent(syncId);
+    let lastDone = false;
+    // loop com interval curto (sem travar)
+    const timer = setInterval(async ()=>{
+      if (lastDone) { clearInterval(timer); return; }
+      try{
+        const j = await api(url);
+        if (j && j.ok){
+          renderJob(j);
+          if (j.done){
+            lastDone = true;
+            clearInterval(timer);
+            setBar(100);
+          }
+        }
+      }catch(e){
+        if (outEl) outEl.textContent = 'Erro ao ler progresso: ' + (e && e.message ? e.message : e);
+        clearInterval(timer);
+      }
+    }, 600);
+  }
+
+  if (outEl) outEl.textContent = 'Iniciando sync ' + what + (force ? ' (FORCADO)' : '') + '...';
+  if (detEl) detEl.textContent = '';
+  setBar(0);
+
   try{
     const r = await fetch('/api/sync-remote', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({what: what, force: !!document.getElementById('chkForceDownload')?.checked})
+      body: JSON.stringify({ what, force, respect_ttl: false })
     });
+
     const j = await r.json().catch(()=>({}));
-    if (outEl) outEl.textContent = (j && j.ok) ? ('OK: ' + what) : ('Falha: ' + what);
+    // modo async (novo)
+    if (j && j.ok && j.sync_id){
+      if (outEl) outEl.textContent = 'Sync iniciado. id=' + j.sync_id + ' - aguardando progresso...';
+      poll(j.sync_id);
+      return;
+    }
+
+    // modo wait/legado (sem sync_id)
+    if (j && j.ok){
+      if (outEl) outEl.textContent = 'OK: ' + what + ' (sem progresso)';
+      if (detEl) detEl.textContent = JSON.stringify(j, null, 2);
+      setBar(100);
+      return;
+    }
+
+    if (outEl) outEl.textContent = 'Falha ao iniciar sync: sem sync_id';
+    if (detEl) detEl.textContent = JSON.stringify(j, null, 2);
+
   }catch(e){
     if (outEl) outEl.textContent = 'Erro ao sincronizar: ' + (e && e.message ? e.message : e);
   }
