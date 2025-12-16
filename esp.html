@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ESP & Logs</title>
+<title>Controlador & Logs</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -19,7 +19,7 @@
       - GET      /api/logs     -> ultimas linhas de log do servidor.
   -->
   <header>
-    <strong data-i18n="configTitle">Configuracao do Controle</strong>
+    <strong data-i18n="configTitle">Configuracao do Controlador</strong>
     <nav><a href="index.html" data-i18n="panel">Painel</a></nav>
 
     <!-- Seletor de idioma (botoes pt/es/en/fr/it/de)
@@ -67,7 +67,7 @@
   <main class="wrap">
     <!-- CARD: Definir IP do controle -->
     <section class="card">
-      <h3 data-i18n="setIpTitle">Definir IP do Controle</h3>
+      <h3 data-i18n="setIpTitle">Definir IP do Controlador</h3>
       <div class="row">
         <input id="esp_ip" placeholder="ex: 192.168.0.150" style="flex:1">
         <button class="btn" id="save" data-i18n="save">Salvar</button>
@@ -78,11 +78,11 @@
 
     <!-- CARD: Feedback do ESP32 -->
     <section class="card">
-      <h3 data-i18n="espFeedback">Feedback do ESP32</h3>
+      <h3 data-i18n="espFeedback">Feedback do Controlador</h3>
       <div id="esp-feedback">
         <p>
           <span class="status-indicator" id="esp-status-indicator"></span>
-          <span data-i18n="statusLabel">Status:</span>
+          <span data-i18n="statusLabel">Estado:</span>
           <span id="esp-feedback-status">Carregando...</span>
         </p>
         <p><span data-i18n="ipLabel">IP:</span> <span id="esp-feedback-ip">Carregando...</span></p>
@@ -111,7 +111,7 @@
     
     <!-- CARD: Atualizações (GitHub) -->
     <section class="card">
-      <h3>Atualizações (GitHub)</h3>
+      <h3>Atualizações (Base de dados)</h3>
       <div class="row" style="gap:10px; flex-wrap: wrap;">
         <button class="btn" id="btn-sync-ui">Sincronizar UI</button>
         <button class="btn" id="btn-sync-videos">Sincronizar Vídeos</button>
@@ -141,12 +141,12 @@
 <script>
 const I18N = {
   pt: {
-    configTitle: "Configuracao do Controle",
+    configTitle: "Configuracao do Controlador",
     panel: "Painel",
-    setIpTitle: "Definir IP do Controle",
+    setIpTitle: "Definir IP do Controlador",
     save: "Salvar",
-    espFeedback: "Feedback do ESP32",
-    statusLabel: "Status:",
+    espFeedback: "Feedback do Controlador",
+    statusLabel: "Estado:",
     ipLabel: "IP:",
     irVolumes: "Volumes IR:",
     relayStates: "Estados Reles:",
@@ -156,19 +156,19 @@ const I18N = {
     reloadLogs: "Recarregar Logs",
     online: "Online", offline: "Offline",
     ipPlaceholder: "ex: 192.168.0.150",
-    errLoadIP: "Erro ao carregar IP do ESP32: ",
-    succSaveIP: "IP do ESP32 salvo com sucesso!",
-    errSaveIP: "Falha ao salvar IP do ESP32: ",
-    errCommSaveIP: "Erro de comunicacao ao salvar IP do ESP32: ",
+    errLoadIP: "Erro ao carregar IP do Controlador: ",
+    succSaveIP: "IP do Controlador salvo com sucesso!",
+    errSaveIP: "Falha ao salvar IP do Controlador: ",
+    errCommSaveIP: "Erro de comunicacao ao salvar IP do Controlador: ",
     errLoadLogs: "Erro ao carregar logs: ",
-    errLoadStatus: "Erro ao carregar estado do ESP32: "
+    errLoadStatus: "Erro ao carregar estado do Controlador: "
   },
   es: {
-    configTitle: "Configuracion del Control",
+    configTitle: "Configuracion del Controlador",
     panel: "Panel",
-    setIpTitle: "Definir IP del Control",
+    setIpTitle: "Definir IP del Controlador",
     save: "Guardar",
-    espFeedback: "Feedback del ESP32",
+    espFeedback: "Feedback del Controlador",
     statusLabel: "Estado:",
     ipLabel: "IP:",
     irVolumes: "Volumenes IR:",
@@ -179,19 +179,19 @@ const I18N = {
     reloadLogs: "Recargar Registros",
     online: "En linea", offline: "Desconectado",
     ipPlaceholder: "ej: 192.168.0.150",
-    errLoadIP: "Error al cargar el IP del ESP32: ",
-    succSaveIP: "IP del ESP32 guardada con exito!",
-    errSaveIP: "Fallo al guardar el IP del ESP32: ",
-    errCommSaveIP: "Error de comunicacion al guardar el IP del ESP32: ",
+    errLoadIP: "Error al cargar el IP del Controlador: ",
+    succSaveIP: "IP del Controlador guardada con exito!",
+    errSaveIP: "Fallo al guardar el IP del Controlador: ",
+    errCommSaveIP: "Error de comunicacion al guardar el IP del Controlador: ",
     errLoadLogs: "Error al cargar los registros: ",
-    errLoadStatus: "Error al cargar el estado del ESP32: "
+    errLoadStatus: "Error al cargar el estado del Controlador: "
   },
   en: {
     configTitle: "Controller Setup",
     panel: "Panel",
     setIpTitle: "Set Controller IP",
     save: "Save",
-    espFeedback: "ESP32 Feedback",
+    espFeedback: "Controller Feedback",
     statusLabel: "Status:",
     ipLabel: "IP:",
     irVolumes: "IR Volumes:",
@@ -202,42 +202,42 @@ const I18N = {
     reloadLogs: "Reload Logs",
     online: "Online", offline: "Offline",
     ipPlaceholder: "e.g. 192.168.0.150",
-    errLoadIP: "Error loading ESP32 IP: ",
-    succSaveIP: "ESP32 IP saved successfully!",
-    errSaveIP: "Failed to save ESP32 IP: ",
-    errCommSaveIP: "Communication error saving ESP32 IP: ",
+    errLoadIP: "Error loading Controller IP: ",
+    succSaveIP: "Controller IP saved successfully!",
+    errSaveIP: "Failed to save Controller IP: ",
+    errCommSaveIP: "Communication error saving Controller IP: ",
     errLoadLogs: "Error loading logs: ",
-    errLoadStatus: "Error loading ESP32 status: "
+    errLoadStatus: "Error loading Controller status: "
   },
   fr: {
-    configTitle: "Configuration du Controle",
+    configTitle: "Configuration du Controleur",
     panel: "Panneau",
-    setIpTitle: "Definir l'IP du Controle",
+    setIpTitle: "Definir l'IP du Controleur",
     save: "Enregistrer",
-    espFeedback: "Retour ESP32",
+    espFeedback: "Retour du Controleur",
     statusLabel: "Statut:",
     ipLabel: "IP:",
     irVolumes: "Volumes IR:",
     relayStates: "Etats des Reles:",
     r1: "Panneau LED",
-    r2: "Système audio",
+    r2: "Systeme audio",
     serverLogs: "Journaux du Serveur",
     reloadLogs: "Recharger les journaux",
     online: "En ligne", offline: "Hors ligne",
     ipPlaceholder: "ex : 192.168.0.150",
-    errLoadIP: "Erreur lors du chargement de l'IP de l'ESP32: ",
-    succSaveIP: "IP de l'ESP32 enregistree avec succes!",
-    errSaveIP: "Echec de l'enregistrement de l'IP de l'ESP32: ",
-    errCommSaveIP: "Erreur de communication lors de l'enregistrement de l'IP de l'ESP32: ",
+    errLoadIP: "Erreur lors du chargement de l'IP du Controleur: ",
+    succSaveIP: "IP du Controleur enregistree avec succes!",
+    errSaveIP: "Echec de l'enregistrement de l'IP du Controleur: ",
+    errCommSaveIP: "Erreur de communication lors de l'enregistrement de l'IP du Controleur: ",
     errLoadLogs: "Erreur lors du chargement des journaux: ",
-    errLoadStatus: "Erreur lors du chargement de l'etat de l'ESP32: "
+    errLoadStatus: "Erreur lors du chargement de l'statut du Controleur: "
   },
   it: {
-    configTitle: "Configurazione del Controllo",
+    configTitle: "Configurazione del Controllore",
     panel: "Pannello",
-    setIpTitle: "Imposta IP del Controllo",
+    setIpTitle: "Imposta IP del Controllore",
     save: "Salva",
-    espFeedback: "Feedback ESP32",
+    espFeedback: "Feedback del Controllore",
     statusLabel: "Stato:",
     ipLabel: "IP:",
     irVolumes: "Volumi IR:",
@@ -248,19 +248,19 @@ const I18N = {
     reloadLogs: "Ricarica Log",
     online: "Online", offline: "Offline",
     ipPlaceholder: "es: 192.168.0.150",
-    errLoadIP: "Errore nel caricare l'IP dell'ESP32: ",
-    succSaveIP: "IP dell'ESP32 salvato con successo!",
-    errSaveIP: "Errore nel salvare l'IP dell'ESP32: ",
-    errCommSaveIP: "Errore di comunicazione salvando l'IP dell'ESP32: ",
+    errLoadIP: "Errore nel caricare l'IP del Controllore: ",
+    succSaveIP: "IP del Controllore salvato con successo!",
+    errSaveIP: "Errore nel salvare l'IP del Controllore: ",
+    errCommSaveIP: "Errore di comunicazione salvando l'IP del Controllore: ",
     errLoadLogs: "Errore nel caricare i log: ",
-    errLoadStatus: "Errore nel caricare lo stato dell'ESP32: "
+    errLoadStatus: "Errore nel caricare lo stato del Controllore: "
   },
   de: {
     configTitle: "Steuerungskonfiguration",
     panel: "Panel",
     setIpTitle: "Controller-IP festlegen",
     save: "Speichern",
-    espFeedback: "ESP32-Ruckmeldung",
+    espFeedback: "Controller-Ruckmeldung",
     statusLabel: "Status:",
     ipLabel: "IP:",
     irVolumes: "IR-Lautstarken:",
@@ -271,12 +271,12 @@ const I18N = {
     reloadLogs: "Protokolle neu laden",
     online: "Online", offline: "Offline",
     ipPlaceholder: "z. B. 192.168.0.150",
-    errLoadIP: "Fehler beim Laden der ESP32-IP: ",
-    succSaveIP: "ESP32-IP erfolgreich gespeichert!",
-    errSaveIP: "Fehler beim Speichern der ESP32-IP: ",
-    errCommSaveIP: "Kommunikationsfehler beim Speichern der ESP32-IP: ",
+    errLoadIP: "Fehler beim Laden der Controller-IP: ",
+    succSaveIP: "Controller-IP erfolgreich gespeichert!",
+    errSaveIP: "Fehler beim Speichern der Controller-IP: ",
+    errCommSaveIP: "Kommunikationsfehler beim Speichern der Controller-IP: ",
     errLoadLogs: "Fehler beim Laden der Protokolle: ",
-    errLoadStatus: "Fehler beim Laden des ESP32-Status: "
+    errLoadStatus: "Fehler beim Laden des Controller-status: "
   }
 };
 
