@@ -6,6 +6,7 @@
 /* ====== LAYOUT BASE (ambas as paginas) ====== */
 body {
   margin: 0;
+  background-color: #0b0f14;
   background-image: url('images/background.jpg');
   background-size: cover;
   background-position: center;
