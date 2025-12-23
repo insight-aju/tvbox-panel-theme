@@ -166,7 +166,7 @@
 <script>
 const I18N = {
   pt: {
-    brand: "LAS CABANAS DEL CONDE github- Painel de Audio",
+    brand: "LAS CABANAS DEL CONDE static - Painel de Audio",
     config: "Config",
     online: "Ativo", offline: "Desativado",
     masterTitle: "Principal (<span id='stream'>-</span>)",
@@ -422,11 +422,27 @@ async function refresh(){
 }
 
 async function pollESPStatus(){
+  // one-shot update (não agenda loop aqui)
+  if (window._espPollInFlight) return !!window._espLastOnline;
+  window._espPollInFlight = true;
+  let isOnline = false;
+
   try{
     const j = await api('/api/status');
     if(!j.ok) throw new Error('Status error');
     const st = j.state || {};
-    if(st.volumes){
+
+    // ONLINE real vem do servidor (não dá pra inferir só por "ip")
+    isOnline = (st.online === true);
+
+    // Atualiza indicador principal (card "Controle de acionamentos")
+    const stTxt = $('#esp32-comm-status .status-text');
+    stTxt.textContent = isOnline ? tStatusOnline() : tStatusOffline();
+    stTxt.style.color = isOnline ? 'lime' : 'red';
+    stTxt.dataset.state = isOnline ? 'on' : 'off';
+
+    // Controles por ambiente (Quiosque/Piscina)
+    if(isOnline && st.volumes){
       const quiosqueMuted = st.mute_state?.QUIOSQUE === true;
       const piscinaMuted  = st.mute_state?.PISCINA  === true;
 
@@ -447,9 +463,16 @@ async function pollESPStatus(){
       $('#piscina-val').textContent = st.volumes.piscina;
       const pm = $('#piscina-mute-indicator');
       if (pm) pm.style.display = piscinaMuted ? 'inline' : 'none';
+    } else {
+      // Sem comunicação: mostra "--" (indicador claro no card por ambiente)
+      $('#quiosque-val').textContent = '--';
+      $('#piscina-val').textContent  = '--';
+      const qm = $('#quiosque-mute-indicator'); if (qm) qm.style.display = 'none';
+      const pm = $('#piscina-mute-indicator');  if (pm) pm.style.display = 'none';
     }
 
-    if (st.relays){
+    // Relés (mantém atualização só quando ONLINE, para não "inventar" estado)
+    if (isOnline && st.relays){
       for (const id of ['r1','r2']){
         const b = $('#' + id);
         if (!b) continue;
@@ -458,28 +481,55 @@ async function pollESPStatus(){
         b.setAttribute('aria-pressed', on);
       }
     }
-      // r3/r4 agora sao acoes de video (nao sao reles) - nao mantem estado "active"
-      for (const vidId of ['r3','r4']){
-        const vb = $('#' + vidId);
-        if (vb){
-          vb.classList.remove('active');
-          vb.setAttribute('aria-pressed', 'false');
-        }
-      }
 
-    const stTxt = $('#esp32-comm-status .status-text');
-    stTxt.textContent = tStatusOnline();
-    stTxt.style.color = 'lime';
-    stTxt.dataset.state = 'on';
+    // r3/r4 agora sao acoes de video (nao sao reles) - nao mantem estado "active"
+    for (const vidId of ['r3','r4']){
+      const vb = $('#' + vidId);
+      if (vb){
+        vb.classList.remove('active');
+        vb.setAttribute('aria-pressed', 'false');
+      }
+    }
 
     espState = st;
   } catch (e) {
+    // Falhou o /api/status (rede/servidor). Aqui sim é erro de fetch.
     const stTxt = $('#esp32-comm-status .status-text');
     stTxt.textContent = tStatusOffline();
     stTxt.style.color = 'red';
     stTxt.dataset.state = 'off';
+
+    $('#quiosque-val').textContent = '--';
+    $('#piscina-val').textContent  = '--';
+    const qm = $('#quiosque-mute-indicator'); if (qm) qm.style.display = 'none';
+    const pm = $('#piscina-mute-indicator');  if (pm) pm.style.display = 'none';
+
+    isOnline = false;
+  } finally {
+    window._espLastOnline = isOnline;
+    window._espPollInFlight = false;
   }
+
+  return isOnline;
 }
+
+// Loop adaptativo: ONLINE -> 1s | OFFLINE -> 3s (evita spam quando o controlador cai)
+window._espPollTimer = null;
+window._espPollInFlight = false;
+window._espLastOnline = false;
+
+function _scheduleEspPoll(delayMs){
+  if (window._espPollTimer) clearTimeout(window._espPollTimer);
+  window._espPollTimer = setTimeout(async ()=>{
+    const online = await pollESPStatus();
+    _scheduleEspPoll(online ? 1000 : 3000);
+  }, delayMs);
+}
+
+function startEspPoll(){
+  _scheduleEspPoll(200);
+}
+
 
 function debounce(fn, ms){
   let t = null;
@@ -686,7 +736,7 @@ $('#btnStopShow').onclick = async ()=>{
 refresh();
 pollESPStatus();
 setInterval(()=>{ if (!dragging.master) refresh(); }, 1500);
-setInterval(pollESPStatus, 1000);
+startEspPoll();
 </script>
 </body>
 </html>
