@@ -588,36 +588,7 @@ function updateEspFeedbackUI(espState) {
   $('#esp-status-indicator').className =
     'status-indicator ' + (isOnline ? 'status-online' : 'status-offline');
 
-  // Wi-Fi do Controlador (se o firmware enviar ssid/rssi no /state)
-  /*const ssid =
-    (espState && espState.wifi && espState.wifi.ssid) ||
-    (espState && espState.ssid) ||
-    (espState && espState.wifi_ssid) ||
-    '';
-  const rssiRaw =
-    (espState && espState.wifi && (espState.wifi.rssi ?? espState.wifi.dbm)) ??
-    (espState && espState.rssi) ??
-    (espState && espState.wifi_rssi);
-
-  const ssidEl = $('#esp-feedback-ssid');
-  if (ssidEl) ssidEl.textContent = ssid ? ssid : 'N/A';
-
-  const sigEl = $('#esp-feedback-signal');
-  const iconEl = $('#esp-feedback-signal-icon');
-
-  function wifiBars(rssi) {
-    if (typeof rssi !== 'number' || isNaN(rssi)) return '';
-    if (rssi >= -55) return '▂▄▆█';
-    if (rssi >= -67) return '▂▄▆';
-    if (rssi >= -80) return '▂▄';
-    return '▂';
-  }
-
-  const rssiNum = (typeof rssiRaw === 'number') ? rssiRaw : parseFloat(rssiRaw);
-  if (sigEl) sigEl.textContent = (typeof rssiNum === 'number' && !isNaN(rssiNum)) ? (rssiNum + ' dBm') : 'N/A';
-  if (iconEl) iconEl.textContent = wifiBars(rssiNum);*/
-
-    // Wi-Fi do Controlador (SSID / RSSI dBm / Barras / MAC)
+     // Wi-Fi do Controlador (SSID / RSSI dBm / Barras / MAC)
   const ssid = (espState && (espState.ssid || espState.wifi_ssid)) || '';
   const mac  = (espState && (espState.mac  || espState.wifi_mac))  || '';
 
@@ -867,6 +838,7 @@ startEspFeedbackLoop();
 </script>
 </body>
 </html>
+
 
 
 
