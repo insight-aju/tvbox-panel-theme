@@ -98,12 +98,17 @@
           <span id="esp-feedback-signal">--</span>
           <span id="esp-feedback-signal-icon" aria-hidden="true" style="margin-left:6px;font-family:monospace;"></span>
         </p>
-
+        
+        <p>
+          <span data-i18n="macLabel">MAC:</span>
+          <span id="esp-feedback-mac">--</span>
+        </p>
+        
         <p>
           <span data-i18n="ipLabel">IP:</span>
           <span id="esp-feedback-ip" data-i18n="loading">Carregando...</span>
         </p>
-
+        
         <p data-i18n="irVolumes">Volumes IR:</p>
         <ul>
           <li>
@@ -177,6 +182,7 @@ const I18N = {
     statusLabel: "Estado:",
     ssidLabel: "SSID:",
     signalLabel: "Sinal:",
+    macLabel: "MAC:",
     ipLabel: "IP:",
     irVolumes: "Volumes IR:",
     kiosk: "Quiosque",
@@ -216,6 +222,7 @@ const I18N = {
     ssidLabel: "SSID:",
     signalLabel: "Senal:",
     ipLabel: "IP:",
+    macLabel: "MAC:",
     irVolumes: "Volumenes IR:",
     kiosk: "Quiosco",
     pool: "Piscina",
@@ -254,6 +261,7 @@ const I18N = {
     ssidLabel: "SSID:",
     signalLabel: "Signal:",
     ipLabel: "IP:",
+    macLabel: "MAC:",
     irVolumes: "IR Volumes:",
     kiosk: "Kiosk",
     pool: "Pool",
@@ -292,6 +300,7 @@ const I18N = {
     ssidLabel: "SSID:",
     signalLabel: "Signal:",
     ipLabel: "IP:",
+    macLabel: "MAC:",
     irVolumes: "Volumes IR:",
     kiosk: "Kiosque",
     pool: "Piscine",
@@ -330,6 +339,7 @@ const I18N = {
     ssidLabel: "SSID:",
     signalLabel: "Segnale:",
     ipLabel: "IP:",
+    macLabel: "MAC:",
     irVolumes: "Volumi IR:",
     kiosk: "Chiosco",
     pool: "Piscina",
@@ -368,6 +378,7 @@ const I18N = {
     ssidLabel: "SSID:",
     signalLabel: "Signal:",
     ipLabel: "IP:",
+    macLabel: "MAC:",
     irVolumes: "IR-Lautstarken:",
     kiosk: "Kiosk",
     pool: "Pool",
@@ -578,7 +589,7 @@ function updateEspFeedbackUI(espState) {
     'status-indicator ' + (isOnline ? 'status-online' : 'status-offline');
 
   // Wi-Fi do Controlador (se o firmware enviar ssid/rssi no /state)
-  const ssid =
+  /*const ssid =
     (espState && espState.wifi && espState.wifi.ssid) ||
     (espState && espState.ssid) ||
     (espState && espState.wifi_ssid) ||
@@ -604,8 +615,55 @@ function updateEspFeedbackUI(espState) {
 
   const rssiNum = (typeof rssiRaw === 'number') ? rssiRaw : parseFloat(rssiRaw);
   if (sigEl) sigEl.textContent = (typeof rssiNum === 'number' && !isNaN(rssiNum)) ? (rssiNum + ' dBm') : 'N/A';
-  if (iconEl) iconEl.textContent = wifiBars(rssiNum);
+  if (iconEl) iconEl.textContent = wifiBars(rssiNum);*/
 
+    // Wi-Fi do Controlador (SSID / RSSI dBm / Barras / MAC)
+  const ssid = (espState && (espState.ssid || espState.wifi_ssid)) || '';
+  const mac  = (espState && (espState.mac  || espState.wifi_mac))  || '';
+
+  const rssiRaw = (espState && (espState.rssi_dbm ?? espState.rssi ?? espState.wifi_rssi));
+  const barsRaw = (espState && (espState.rssi_bars ?? espState.wifi_bars));
+
+  const ssidEl = $('#esp-feedback-ssid');
+  const sigEl  = $('#esp-feedback-signal');
+  const iconEl = $('#esp-feedback-signal-icon');
+  const macEl  = $('#esp-feedback-mac');
+
+  const rssiNum = (typeof rssiRaw === 'number') ? rssiRaw : parseFloat(rssiRaw);
+
+  function barsFromRssi(r){
+    if (!Number.isFinite(r)) return null;
+    if (r >= -55) return 4;
+    if (r >= -67) return 3;
+    if (r >= -80) return 2;
+    return 1;
+  }
+  function barsGlyph(n){
+    const b = Math.max(0, Math.min(4, Number(n) || 0));
+    if (b <= 0) return '';
+    if (b === 1) return '▂';
+    if (b === 2) return '▂▄';
+    if (b === 3) return '▂▄▆';
+    return '▂▄▆█';
+  }
+
+  // Se offline: limpa infos
+  if (!isOnline){
+    if (ssidEl) ssidEl.textContent = 'N/A';
+    if (sigEl)  sigEl.textContent  = 'N/A';
+    if (iconEl) iconEl.textContent = '';
+    if (macEl)  macEl.textContent  = 'N/A';
+  } else {
+    if (ssidEl) ssidEl.textContent = (ssid && String(ssid).trim()) ? ssid : 'N/A';
+    if (macEl)  macEl.textContent  = (mac  && String(mac).trim())  ? mac  : 'N/A';
+
+    if (sigEl) sigEl.textContent = Number.isFinite(rssiNum) ? (rssiNum + ' dBm') : 'N/A';
+
+    const bars = Number.isFinite(Number(barsRaw)) ? Number(barsRaw) : barsFromRssi(rssiNum);
+    if (iconEl) iconEl.textContent = (bars == null) ? '' : barsGlyph(bars);
+  }
+
+  
   $('#esp-feedback-ip').textContent = (espState && espState.ip) ? espState.ip : 'N/A';
 
   if (espState.volumes){
@@ -809,6 +867,7 @@ startEspFeedbackLoop();
 </script>
 </body>
 </html>
+
 
 
 
