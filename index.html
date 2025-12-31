@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Painel de Audio_github</title>
+<title>Painel de Audio_2.0</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -402,17 +402,25 @@ function updateUI(){
   }
 }
 
-async function api(path, method = 'GET', body = null){
-  const opt = { method, headers: {'Content-Type': 'application/json'} };
+async function api(path, method = 'GET', body = null, timeoutMs = 4000){
+  const controller = new AbortController();
+  const t = setTimeout(()=>controller.abort(), timeoutMs);
+
+  const opt = { method, headers: {'Content-Type': 'application/json'}, signal: controller.signal };
   if (body) opt.body = JSON.stringify(body);
-  const r = await fetch(path, opt);
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  return r.json();
+
+  try{
+    const r = await fetch(path, opt);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 async function refresh(){
   try {
-    const j = await api('/api/vol');
+    const j = await api('/api/vol','GET',null,2500);
     STATE = j;
     updateUI();
     $('#status').textContent = tStatusOnline();
@@ -428,7 +436,7 @@ async function pollESPStatus(){
   let isOnline = false;
 
   try{
-    const j = await api('/api/status');
+    const j = await api('/api/status','GET',null,3500);
     if(!j.ok) throw new Error('Status error');
     const st = j.state || {};
 
@@ -443,8 +451,8 @@ async function pollESPStatus(){
 
     // Controles por ambiente (Quiosque/Piscina)
     if(isOnline && st.volumes){
-      const quiosqueMuted = st.mute_state?.QUIOSQUE === true;
-      const piscinaMuted  = st.mute_state?.PISCINA  === true;
+      const quiosqueMuted = (st.mute_state||st.ir_mutes)?.QUIOSQUE === true;
+      const piscinaMuted  = (st.mute_state||st.ir_mutes)?.PISCINA  === true;
 
       // Quiosque
       const volQuiosque = quiosqueMuted ? 0 : st.volumes.quiosque;
@@ -522,7 +530,8 @@ function _scheduleEspPoll(delayMs){
   if (window._espPollTimer) clearTimeout(window._espPollTimer);
   window._espPollTimer = setTimeout(async ()=>{
     const online = await pollESPStatus();
-    _scheduleEspPoll(online ? 1000 : 3000);
+    const nextDelay = document.hidden ? 8000 : (online ? 1000 : 3000);
+    _scheduleEspPoll(nextDelay);
   }, delayMs);
 }
 
@@ -571,7 +580,7 @@ async function sendIR(dev, cmd){
 }
 
 async function playVideo(key){
-  const j = await api('/api/playvideo','POST',{ key });
+  const j = await api('/api/playvideo','POST',{ key }, 12000);
   if (!j.ok) throw new Error(j.out || 'falha');
 }
 
@@ -616,7 +625,7 @@ $('#vol-quiosque').addEventListener('input', e=>{
 $('#vol-quiosque').addEventListener('change', async ()=>{
   dragging.quiosque = false;
   const newVal = Number($('#vol-quiosque').value);
-  const currentMuteState = espState.mute_state?.QUIOSQUE === true;
+  const currentMuteState = (espState.mute_state||espState.ir_mutes)?.QUIOSQUE === true;
 
   if (currentMuteState){
     await sendIR('QUIOSQUE', 'MUTE');
@@ -643,7 +652,7 @@ $('#vol-piscina').addEventListener('input', e=>{
 $('#vol-piscina').addEventListener('change', async ()=>{
   dragging.piscina = false;
   const newVal = Number($('#vol-piscina').value);
-  const currentMuteState = espState.mute_state?.PISCINA === true;
+  const currentMuteState = (espState.mute_state||espState.ir_mutes)?.PISCINA === true;
 
   if (currentMuteState){
     await sendIR('PISCINA', 'MUTE');
@@ -685,7 +694,7 @@ document.querySelectorAll('.relay-toggle').forEach(button => {
 
 $('#btnYouTube').onclick = async ()=>{
   try {
-    const j = await api('/api/youtube','POST',{});
+    const j = await api('/api/youtube','POST',{}, 12000);
     if (!j.ok) throw new Error(j.out || 'falha');
   } catch {
     alert('Falha ao abrir YouTube');
@@ -694,7 +703,7 @@ $('#btnYouTube').onclick = async ()=>{
 
 $('#btnWelcome').onclick = async ()=>{
   try {
-    const j = await api('/api/welcome','POST',{});
+    const j = await api('/api/welcome','POST',{}, 12000);
     if (!j.ok) throw new Error(j.out || 'falha');
   } catch (e){
     alert('Falha ao abrir video de boas-vindas');
@@ -703,7 +712,7 @@ $('#btnWelcome').onclick = async ()=>{
 
 $('#btnHome').onclick = async ()=>{
   try {
-    const j = await api('/api/home','POST',{});
+    const j = await api('/api/home','POST',{}, 12000);
     if (!j.ok) throw new Error(j.out || 'falha');
   } catch {
     alert('Falha ao enviar comando Retorno');
@@ -715,8 +724,9 @@ $('#btnStartShow').onclick = async ()=>{
     await setRelay('r1', true);
     await setRelay('r2', true);
 
-    const j = await api('/api/startshow','POST',{ delay_s: 45 });
-    if (!j.ok) throw new Error(j.out || 'falha');
+    const j = await api('/api/startshow','POST',{ delay_s: 45 }, 20000);
+    if (!j.video_ok) throw new Error(j.out || 'falha');
+    if (j.timer_ok === false) console.warn('Iniciou, mas falhou agendamento do YouTube.', j);
   } catch(e){
     alert('Falha ao iniciar show');
     console.error(e);
@@ -725,7 +735,7 @@ $('#btnStartShow').onclick = async ()=>{
 
 $('#btnStopShow').onclick = async ()=>{
   try {
-    const j = await api('/api/stopshow','POST',{});
+    const j = await api('/api/stopshow','POST',{}, 12000);
     if (!j.ok) throw new Error(j.out || 'falha');
   } catch(e){
     alert('Falha ao encerrar show');
@@ -733,9 +743,70 @@ $('#btnStopShow').onclick = async ()=>{
   }
 };
 
+// -------------------- Poll loops (com pausa/slowdown em background) --------------------
+let _volPollTimer = null;
+
+function _scheduleVolPoll(delayMs){
+  if (_volPollTimer) clearTimeout(_volPollTimer);
+  _volPollTimer = setTimeout(async ()=>{
+    try{
+      if (!dragging.master){
+        await refresh();
+      }
+    } catch (e){
+      // refresh() já cuida de status online/offline
+    } finally {
+      const nextDelay = document.hidden ? 8000 : 1500;
+      _scheduleVolPoll(nextDelay);
+    }
+  }, delayMs);
+}
+
+function startVolPoll(){
+  _scheduleVolPoll(200);
+}
+
+function stopVolPoll(){
+  if (_volPollTimer) clearTimeout(_volPollTimer);
+  _volPollTimer = null;
+}
+
+function stopEspPoll(){
+  if (window._espPollTimer) clearTimeout(window._espPollTimer);
+  window._espPollTimer = null;
+}
+
+// Quando a aba fica em segundo plano, reduz bastante a taxa de polling.
+// Quando volta para o foreground, força uma atualização rápida.
+document.addEventListener('visibilitychange', ()=>{
+  if (!document.hidden){
+    refresh();               // atualiza logo ao voltar
+    startVolPoll();          // retoma rápido
+    startEspPoll();          // retoma rápido
+  } else {
+    startVolPoll();          // reprograma (vai cair em 8s)
+    startEspPoll();          // reprograma (vai cair em 8s)
+  }
+});
+
+window.addEventListener('online', ()=>{
+  refresh();
+  startEspPoll();
+});
+
+window.addEventListener('offline', ()=>{
+  $('#status').textContent = tStatusOffline();
+});
+
+// Limpa timers ao sair/navegar pra evitar loops duplicados
+window.addEventListener('pagehide', ()=>{
+  stopVolPoll();
+  stopEspPoll();
+});
+
+// Boot
 refresh();
-pollESPStatus();
-setInterval(()=>{ if (!dragging.master) refresh(); }, 1500);
+startVolPoll();
 startEspPoll();
 </script>
 </body>

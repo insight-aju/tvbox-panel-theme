@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Controlador & Logs_GITHUB</title>
+<title>Controlador & Logs_2.0</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,7 +14,6 @@
       - Exibir feedback em tempo real do ESP32 (status, volumes, reles).
       - Mostrar logs do servidor.
     Endpoints relacionados (ver servidor Python):
-      - GET/POST /api/esp-ip       -> carrega/salva IP do ESP.
       - GET      /api/status       -> estado do ESP (online/offline, volumes, mute, reles, wifi).
       - GET      /api/logs         -> ultimas linhas de log do servidor.
       - POST     /api/sync-remote  -> sincroniza UI/videos (async com progresso).
@@ -67,17 +66,6 @@
   </header>
 
   <main class="wrap">
-    <!-- CARD: Definir IP do controle -->
-    <section class="card">
-      <h3 data-i18n="setIpTitle">Definir IP do Controlador</h3>
-      <div class="row">
-        <input id="esp_ip" placeholder="ex: 192.168.0.150" style="flex:1">
-        <button class="btn" id="save" data-i18n="save">Salvar</button>
-      </div>
-      <div class="error-message" id="esp-ip-error"></div>
-      <div class="success-message" id="esp-ip-success"></div>
-    </section>
-
     <!-- CARD: Feedback do ESP32 -->
     <section class="card">
       <h3 data-i18n="espFeedback">Feedback do Controlador</h3>
@@ -498,34 +486,6 @@ async function api(path, method = 'GET', body = null){
   return r.json();
 }
 
-async function loadIp(){
-  try {
-    const j = await api('/api/esp-ip');
-    $('#esp_ip').value = j.esp_ip || j.ip || '';
-  } catch (error) {
-    showError('#esp-ip-error', t('errLoadIP') + error.message);
-  }
-}
-
-async function saveIp(){
-  const ip = $('#esp_ip').value.trim();
-  if (!ip){
-    showError('#esp-ip-error', t('errSaveIP') + t('invalidIP'));
-    return;
-  }
-  try {
-    const j = await api('/api/esp-ip', 'POST', { ip });
-    if (j.ok) {
-      showSuccess('#esp-ip-success', t('succSaveIP'));
-      loadEspFeedback();
-    } else {
-      showError('#esp-ip-error', t('errSaveIP') + (j.error || 'Erro'));
-    }
-  } catch (error) {
-    showError('#esp-ip-error', t('errCommSaveIP') + error.message);
-  }
-}
-
 async function loadLogs(){
   try {
     const j = await api('/api/logs?n=300');
@@ -612,9 +572,9 @@ function updateEspFeedbackUI(espState) {
   function barsGlyph(n){
     const b = Math.max(0, Math.min(4, Number(n) || 0));
     if (b <= 0) return '';
-    if (b === 1) return '▂';
+    if (b === 1) return '�??1�??7';
     if (b === 2) return '▂▄';
-    if (b === 3) return '▂▄▆';
+    if (b === 3) return '▂▄�??1�??7';
     return '▂▄▆█';
   }
 
@@ -635,11 +595,11 @@ function updateEspFeedbackUI(espState) {
   }
 
   
-  $('#esp-feedback-ip').textContent = (espState && espState.ip) ? espState.ip : 'N/A';
+  $('#esp-feedback-ip').textContent = (espState && (espState.ip || espState.local_ip || espState.esp_ip)) ? (espState.ip || espState.local_ip || espState.esp_ip) : 'N/A';
 
   if (espState.volumes){
-    const quiosqueMuted = espState.mute_state?.QUIOSQUE === true;
-    const piscinaMuted  = espState.mute_state?.PISCINA === true;
+    const quiosqueMuted = (espState.mute_state||espState.ir_mutes)?.QUIOSQUE === true;
+    const piscinaMuted  = (espState.mute_state||espState.ir_mutes)?.PISCINA === true;
 
     $('#esp-feedback-quiosque-vol').textContent =
       (espState.volumes.quiosque !== undefined) ? espState.volumes.quiosque : '--';
@@ -674,8 +634,6 @@ function updateEspFeedbackUI(espState) {
     }
   }
 }
-
-document.getElementById('save').onclick = saveIp;
 document.getElementById('reload-logs').onclick = loadLogs;
 
 async function syncRemote(what){
@@ -829,8 +787,6 @@ const b1 = document.getElementById('btn-sync-ui');
 if (b1) b1.onclick = () => syncRemote('ui');
 const b2 = document.getElementById('btn-sync-videos');
 if (b2) b2.onclick = () => syncRemote('videos');
-
-loadIp();
 loadLogs();
 loadEspFeedback();
 loadAutoUpdate();
