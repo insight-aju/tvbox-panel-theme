@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Controlador & Logs_2.0</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!--
+    Pagina: esp.html
+    Funcao:
+      - Definir o IP do controle (ESP / servidor).
+      - Exibir feedback em tempo real do ESP32 (status, volumes, reles).
+      - Mostrar logs do servidor.
+    Endpoints relacionados (ver servidor Python):
+      - GET      /api/status       -> estado do ESP (online/offline, volumes, mute, reles, wifi).
+      - GET      /api/logs         -> ultimas linhas de log do servidor.
+      - POST     /api/sync-remote  -> sincroniza UI/videos (async com progresso).
+      - GET/POST /api/auto-update  -> liga/desliga auto update (quando TTL vencer).
+  -->
+  <header>
+    <strong data-i18n="configTitle">Configuracao do Controlador</strong>
+    <nav><a href="index.html" data-i18n="panel">Painel</a></nav>
+
+    <!-- Seletor de idioma (botoes pt/es/en/fr/it/de)
+         Estilos: ver style.css, secao "SELECIONADOR DE IDIOMA" -->
+    <div class="lang-picker" role="group" aria-label="Idioma">
+      <button class="lang-btn" data-lang="pt" title="Portugues (Brasil)">
+        <span class="lang-flag" aria-hidden="true">🇧🇷</span>
+        <span class="lang-code">BR</span>
+      </button>
+      <button class="lang-btn" data-lang="es" title="Espanol">
+        <span class="lang-flag" aria-hidden="true">🇪🇸</span>
+        <span class="lang-code">ES</span>
+      </button>
+      <button class="lang-btn" data-lang="en" title="English">
+        <span class="lang-flag" aria-hidden="true">🇺🇸</span>
+        <span class="lang-code">EN</span>
+      </button>
+      <button class="lang-btn" data-lang="fr" title="Francais">
+        <span class="lang-flag" aria-hidden="true">🇫🇷</span>
+        <span class="lang-code">FR</span>
+      </button>
+      <button class="lang-btn" data-lang="it" title="Italiano">
+        <span class="lang-flag" aria-hidden="true">🇮🇹</span>
+        <span class="lang-code">IT</span>
+      </button>
+      <button class="lang-btn" data-lang="de" title="Deutsch">
+        <span class="lang-flag" aria-hidden="true">🇩🇪</span>
+        <span class="lang-code">DE</span>
+      </button>
+    </div>
+
+    <!-- Seletor compacto (mobile retrato) -->
+    <label class="lang-select-wrap" aria-label="Idioma">
+      <select id="langSelect" class="lang-select" aria-label="Idioma">
+        <option value="pt">🇧🇷 BR</option>
+        <option value="es">🇪🇸 ES</option>
+        <option value="en">🇺🇸 EN</option>
+        <option value="fr">🇫🇷 FR</option>
+        <option value="it">🇮🇹 IT</option>
+        <option value="de">🇩🇪 DE</option>
+      </select>
+    </label>
+  </header>
+
+  <main class="wrap">
+    <!-- CARD: Feedback do ESP32 -->
+    <section class="card">
+      <h3 data-i18n="espFeedback">Feedback do Controlador</h3>
+      <div id="esp-feedback">
+        <p>
+          <span class="status-indicator" id="esp-status-indicator"></span>
+          <span data-i18n="statusLabel">Estado:</span>
+          <span id="esp-feedback-status" data-i18n="loading">Carregando...</span>
+        </p>
+
+        <p>
+          <span data-i18n="ssidLabel">SSID:</span>
+          <span id="esp-feedback-ssid">--</span>
+        </p>
+
+        <p>
+          <span data-i18n="signalLabel">Sinal:</span>
+          <span id="esp-feedback-signal">--</span>
+          <span id="esp-feedback-signal-icon" aria-hidden="true" style="margin-left:6px;font-family:monospace;"></span>
+        </p>
+        
+        <p>
+          <span data-i18n="macLabel">MAC:</span>
+          <span id="esp-feedback-mac">--</span>
+        </p>
+        
+        <p>
+          <span data-i18n="ipLabel">IP:</span>
+          <span id="esp-feedback-ip" data-i18n="loading">Carregando...</span>
+        </p>
+        
+        <p data-i18n="irVolumes">Volumes IR:</p>
+        <ul>
+          <li>
+            <span data-i18n="kiosk">Quiosque</span>:
+            <span id="esp-feedback-quiosque-vol">--</span>
+            <span id="esp-feedback-quiosque-mute" data-i18n="muted" style="color: red; display: none;">Mudo</span>
+          </li>
+          <li>
+            <span data-i18n="pool">Piscina</span>:
+            <span id="esp-feedback-piscina-vol">--</span>
+            <span id="esp-feedback-piscina-mute" data-i18n="muted" style="color: red; display: none;">Mudo</span>
+          </li>
+        </ul>
+
+        <p data-i18n="relayStates">Estados Reles:</p>
+        <ul id="esp-feedback-relay-list">
+          <li><span data-i18n="r1">Painel de LED</span> (GPIO 23): <span id="esp-feedback-r1">--</span></li>
+          <li><span data-i18n="r2">Sistema de som</span> (GPIO 22): <span id="esp-feedback-r2">--</span></li>
+        </ul>
+      </div>
+      <div class="error-message" id="esp-feedback-error"></div>
+    </section>
+
+    <!-- CARD: Atualizacoes (GitHub) -->
+    <section class="card">
+      <h3 data-i18n="updatesTitle">Atualizacoes (Base de dados)</h3>
+      <div class="row" style="gap:10px; flex-wrap: wrap;">
+        <button class="btn" id="btn-sync-ui" data-i18n="syncUi">Sincronizar UI</button>
+        <button class="btn" id="btn-sync-videos" data-i18n="syncVideos">Sincronizar Videos</button>
+      </div>
+
+      <label class="muted" style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+        <input type="checkbox" id="chkForceDownload">
+        <span data-i18n="forceDownloadLabel">Forcar download (ignorar cache)</span>
+      </label>
+
+      <label class="muted" style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+        <input type="checkbox" id="chkAutoUpdate">
+        <span data-i18n="autoUpdateLabel">Atualizacao automatica (quando TTL vencer)</span>
+      </label>
+
+      <div class="muted" id="auto-update-hint" style="margin-top:6px;"></div>
+      <div class="muted" id="sync-result" style="margin-top:10px;"></div>
+
+      <div class="sync-progress" style="margin-top:10px;">
+        <div class="sync-bar" id="sync-bar" style="width:0%"></div>
+      </div>
+
+      <div id="sync-details" class="sync-details" style="margin-top:10px;"></div>
+    </section>
+
+    <!-- CARD: Logs do servidor -->
+    <section class="card">
+      <h3 data-i18n="serverLogs">Logs do Servidor</h3>
+      <pre id="logs" class="logbox">...</pre>
+      <div class="row">
+        <button class="btn" id="reload-logs" data-i18n="reloadLogs">Recarregar Logs</button>
+      </div>
+    </section>
+  </main>
+
+<!-- === I18N para esp.html (textos da pagina de configuracao) === -->
+<script>
+const I18N = {
+  pt: {
+    configTitle: "Configuracao do Controlador",
+    panel: "Painel",
+    setIpTitle: "Definir IP do Controlador",
+    save: "Salvar",
+    espFeedback: "Feedback do Controlador",
+    statusLabel: "Estado:",
+    ssidLabel: "SSID:",
+    signalLabel: "Sinal:",
+    macLabel: "MAC:",
+    ipLabel: "IP:",
+    irVolumes: "Volumes IR:",
+    kiosk: "Quiosque",
+    pool: "Piscina",
+    muted: "Mudo",
+    relayStates: "Estados Reles:",
+    r1: "Painel de LED",
+    r2: "Sistema de som",
+    updatesTitle: "Atualizacoes (Base de dados)",
+    syncUi: "Sincronizar UI",
+    syncVideos: "Sincronizar Videos",
+    forceDownloadLabel: "Forcar download (ignorar cache)",
+    autoUpdateLabel: "Atualizacao automatica (quando TTL vencer)",
+    serverLogs: "Logs do Servidor",
+    reloadLogs: "Recarregar Logs",
+    loading: "Carregando...",
+    online: "Online",
+    offline: "Offline",
+    ipPlaceholder: "ex: 192.168.0.150",
+    invalidIP: "IP invalido",
+    errLoadIP: "Erro ao carregar IP do Controlador: ",
+    succSaveIP: "IP do Controlador salvo com sucesso!",
+    errSaveIP: "Falha ao salvar IP do Controlador: ",
+    errCommSaveIP: "Erro de comunicacao ao salvar IP do Controlador: ",
+    errLoadLogs: "Erro ao carregar logs: ",
+    errLoadStatus: "Erro ao carregar estado do Controlador: ",
+    ttlLabel: "TTL",
+    minGapLabel: "Min gap"
+  },
+  es: {
+    configTitle: "Configuracion del Controlador",
+    panel: "Panel",
+    setIpTitle: "Definir IP del Controlador",
+    save: "Guardar",
+    espFeedback: "Feedback del Controlador",
+    statusLabel: "Estado:",
+    ssidLabel: "SSID:",
+    signalLabel: "Senal:",
+    ipLabel: "IP:",
+    macLabel: "MAC:",
+    irVolumes: "Volumenes IR:",
+    kiosk: "Quiosco",
+    pool: "Piscina",
+    muted: "Silencio",
+    relayStates: "Estados de Reles:",
+    r1: "Panel de LED",
+    r2: "Sistema de sonido",
+    updatesTitle: "Actualizaciones (Base de datos)",
+    syncUi: "Sincronizar UI",
+    syncVideos: "Sincronizar Videos",
+    forceDownloadLabel: "Forzar descarga (ignorar cache)",
+    autoUpdateLabel: "Actualizacion automatica (cuando venza el TTL)",
+    serverLogs: "Registros del Servidor",
+    reloadLogs: "Recargar Registros",
+    loading: "Cargando...",
+    online: "En linea",
+    offline: "Desconectado",
+    ipPlaceholder: "ej: 192.168.0.150",
+    invalidIP: "IP invalida",
+    errLoadIP: "Error al cargar el IP del Controlador: ",
+    succSaveIP: "IP del Controlador guardada con exito!",
+    errSaveIP: "Fallo al guardar el IP del Controlador: ",
+    errCommSaveIP: "Error de comunicacion al guardar el IP del Controlador: ",
+    errLoadLogs: "Error al cargar los registros: ",
+    errLoadStatus: "Error al cargar el estado del Controlador: ",
+    ttlLabel: "TTL",
+    minGapLabel: "Min gap"
+  },
+  en: {
+    configTitle: "Controller Setup",
+    panel: "Panel",
+    setIpTitle: "Set Controller IP",
+    save: "Save",
+    espFeedback: "Controller Feedback",
+    statusLabel: "Status:",
+    ssidLabel: "SSID:",
+    signalLabel: "Signal:",
+    ipLabel: "IP:",
+    macLabel: "MAC:",
+    irVolumes: "IR Volumes:",
+    kiosk: "Kiosk",
+    pool: "Pool",
+    muted: "Muted",
+    relayStates: "Relay States:",
+    r1: "LED panel",
+    r2: "Sound system",
+    updatesTitle: "Updates (Database)",
+    syncUi: "Sync UI",
+    syncVideos: "Sync Videos",
+    forceDownloadLabel: "Force download (ignore cache)",
+    autoUpdateLabel: "Automatic update (when TTL expires)",
+    serverLogs: "Server Logs",
+    reloadLogs: "Reload Logs",
+    loading: "Loading...",
+    online: "Online",
+    offline: "Offline",
+    ipPlaceholder: "e.g. 192.168.0.150",
+    invalidIP: "Invalid IP",
+    errLoadIP: "Error loading Controller IP: ",
+    succSaveIP: "Controller IP saved successfully!",
+    errSaveIP: "Failed to save Controller IP: ",
+    errCommSaveIP: "Communication error saving Controller IP: ",
+    errLoadLogs: "Error loading logs: ",
+    errLoadStatus: "Error loading Controller status: ",
+    ttlLabel: "TTL",
+    minGapLabel: "Min gap"
+  },
+  fr: {
+    configTitle: "Configuration du Controleur",
+    panel: "Panneau",
+    setIpTitle: "Definir l'IP du Controleur",
+    save: "Enregistrer",
+    espFeedback: "Retour du Controleur",
+    statusLabel: "Statut:",
+    ssidLabel: "SSID:",
+    signalLabel: "Signal:",
+    ipLabel: "IP:",
+    macLabel: "MAC:",
+    irVolumes: "Volumes IR:",
+    kiosk: "Kiosque",
+    pool: "Piscine",
+    muted: "Muet",
+    relayStates: "Etats des Reles:",
+    r1: "Panneau LED",
+    r2: "Systeme audio",
+    updatesTitle: "Mises a jour (Base de donnees)",
+    syncUi: "Synchroniser UI",
+    syncVideos: "Synchroniser Videos",
+    forceDownloadLabel: "Forcer le telechargement (ignorer le cache)",
+    autoUpdateLabel: "Mise a jour auto (quand le TTL expire)",
+    serverLogs: "Journaux du Serveur",
+    reloadLogs: "Recharger les journaux",
+    loading: "Chargement...",
+    online: "En ligne",
+    offline: "Hors ligne",
+    ipPlaceholder: "ex: 192.168.0.150",
+    invalidIP: "IP invalide",
+    errLoadIP: "Erreur lors du chargement de l'IP du Controleur: ",
+    succSaveIP: "IP du Controleur enregistree avec succes!",
+    errSaveIP: "Echec de l'enregistrement de l'IP du Controleur: ",
+    errCommSaveIP: "Erreur de communication lors de l'enregistrement de l'IP du Controleur: ",
+    errLoadLogs: "Erreur lors du chargement des journaux: ",
+    errLoadStatus: "Erreur lors du chargement du statut du Controleur: ",
+    ttlLabel: "TTL",
+    minGapLabel: "Min gap"
+  },
+  it: {
+    configTitle: "Configurazione del Controllore",
+    panel: "Pannello",
+    setIpTitle: "Imposta IP del Controllore",
+    save: "Salva",
+    espFeedback: "Feedback del Controllore",
+    statusLabel: "Stato:",
+    ssidLabel: "SSID:",
+    signalLabel: "Segnale:",
+    ipLabel: "IP:",
+    macLabel: "MAC:",
+    irVolumes: "Volumi IR:",
+    kiosk: "Chiosco",
+    pool: "Piscina",
+    muted: "Muto",
+    relayStates: "Stati dei Rele:",
+    r1: "Pannello LED",
+    r2: "Sistema audio",
+    updatesTitle: "Aggiornamenti (Database)",
+    syncUi: "Sincronizza UI",
+    syncVideos: "Sincronizza Video",
+    forceDownloadLabel: "Forza download (ignora cache)",
+    autoUpdateLabel: "Aggiornamento automatico (quando scade il TTL)",
+    serverLogs: "Log del Server",
+    reloadLogs: "Ricarica Log",
+    loading: "Caricamento...",
+    online: "Online",
+    offline: "Offline",
+    ipPlaceholder: "es: 192.168.0.150",
+    invalidIP: "IP non valido",
+    errLoadIP: "Errore nel caricare l'IP del Controllore: ",
+    succSaveIP: "IP del Controllore salvato con successo!",
+    errSaveIP: "Errore nel salvare l'IP del Controllore: ",
+    errCommSaveIP: "Errore di comunicazione salvando l'IP del Controllore: ",
+    errLoadLogs: "Errore nel caricare i log: ",
+    errLoadStatus: "Errore nel caricare lo stato del Controllore: ",
+    ttlLabel: "TTL",
+    minGapLabel: "Min gap"
+  },
+  de: {
+    configTitle: "Steuerungskonfiguration",
+    panel: "Panel",
+    setIpTitle: "Controller-IP festlegen",
+    save: "Speichern",
+    espFeedback: "Controller-Ruckmeldung",
+    statusLabel: "Status:",
+    ssidLabel: "SSID:",
+    signalLabel: "Signal:",
+    ipLabel: "IP:",
+    macLabel: "MAC:",
+    irVolumes: "IR-Lautstarken:",
+    kiosk: "Kiosk",
+    pool: "Pool",
+    muted: "Stumm",
+    relayStates: "Relaiszustande:",
+    r1: "LED-Panel",
+    r2: "Soundsystem",
+    updatesTitle: "Updates (Datenbank)",
+    syncUi: "UI synchronisieren",
+    syncVideos: "Videos synchronisieren",
+    forceDownloadLabel: "Download erzwingen (Cache ignorieren)",
+    autoUpdateLabel: "Automatische Aktualisierung (wenn TTL ablauft)",
+    serverLogs: "Serverprotokolle",
+    reloadLogs: "Protokolle neu laden",
+    loading: "Laden...",
+    online: "Online",
+    offline: "Offline",
+    ipPlaceholder: "z. B. 192.168.0.150",
+    invalidIP: "Ungultige IP",
+    errLoadIP: "Fehler beim Laden der Controller-IP: ",
+    succSaveIP: "Controller-IP erfolgreich gespeichert!",
+    errSaveIP: "Fehler beim Speichern der Controller-IP: ",
+    errCommSaveIP: "Kommunikationsfehler beim Speichern der Controller-IP: ",
+    errLoadLogs: "Fehler beim Laden der Protokolle: ",
+    errLoadStatus: "Fehler beim Laden des Controller-Status: ",
+    ttlLabel: "TTL",
+    minGapLabel: "Min gap"
+  }
+};
+
+let LANG = localStorage.getItem('lang') || (navigator.language || 'pt').slice(0, 2);
+if (!I18N[LANG]) LANG = 'pt';
+
+function applyI18n(){
+  const map = I18N[LANG];
+
+  // marca idioma ativo nos botoes
+  document.querySelectorAll('.lang-btn').forEach(b=>{
+    b.setAttribute('aria-current', b.dataset.lang === LANG ? 'true' : 'false');
+  });
+
+  // sync select
+  const sel = document.getElementById('langSelect');
+  if (sel) sel.value = LANG;
+
+  // textos data-i18n
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key = el.getAttribute('data-i18n');
+    if (map[key] !== undefined){
+      el.textContent = map[key];
+    }
+  });
+
+  // placeholder do IP
+  const ip = document.getElementById('esp_ip');
+  if (ip) ip.setAttribute('placeholder', map.ipPlaceholder);
+
+  // status (mantem o estado atual on/off)
+  const st = document.getElementById('esp-feedback-status');
+  if (st) {
+    const isOnline = st.dataset.state === 'on';
+    st.textContent = isOnline ? map.online : map.offline;
+  }
+}
+
+document.addEventListener('click', (e)=>{
+  const btn = e.target.closest('.lang-btn');
+  if (!btn) return;
+  LANG = btn.dataset.lang;
+  localStorage.setItem('lang', LANG);
+  applyI18n();
+});
+
+document.addEventListener('change', (e)=>{
+  const sel = e.target.closest('#langSelect');
+  if (!sel) return;
+  LANG = sel.value;
+  localStorage.setItem('lang', LANG);
+  applyI18n();
+});
+
+function t(key){ return (I18N[LANG] && I18N[LANG][key]) || key; }
+function tOnline(){ return I18N[LANG].online; }
+function tOffline(){ return I18N[LANG].offline; }
+
+document.addEventListener('DOMContentLoaded', applyI18n);
+</script>
+
+<!-- === Logica da pagina esp.html (IP, status, logs, sync) === -->
+<script>
+const $ = sel => document.querySelector(sel);
+
+function showError(elementSelector, message) {
+  const el = $(elementSelector);
+  if (el) {
+    el.textContent = message;
+    el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), 5000);
+  }
+  console.error(message);
+}
+
+function showSuccess(elementSelector, message) {
+  const el = $(elementSelector);
+  if (el) {
+    el.textContent = message;
+    el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), 3000);
+  }
+}
+
+async function api(path, method = 'GET', body = null){
+  const opt = { method, headers: {'Content-Type': 'application/json'} };
+  if (body) opt.body = JSON.stringify(body);
+  const r = await fetch(path, opt);
+  if (!r.ok) throw new Error('HTTP ' + r.status + ': ' + (await r.text()));
+  return r.json();
+}
+
+async function loadLogs(){
+  try {
+    const j = await api('/api/logs?n=300');
+    $('#logs').textContent = (j.lines || []).join('\n');
+    $('#logs').scrollTop = $('#logs').scrollHeight;
+  } catch (error) {
+    showError('#esp-feedback-error', t('errLoadLogs') + error.message);
+  }
+}
+
+async function loadEspFeedback(){
+  if (window._espFbInFlight) return !!window._espFbLastOnline;
+  window._espFbInFlight = true;
+  let isOnline = false;
+
+  try {
+    const j = await api('/api/status');
+    if (j.ok && j.state){
+      isOnline = (j.state.online === true);
+      updateEspFeedbackUI(j.state);
+    } else {
+      throw new Error('Estado invalido');
+    }
+  } catch (error) {
+    showError('#esp-feedback-error', t('errLoadStatus') + error.message);
+    updateEspFeedbackUI({});
+    isOnline = false;
+  } finally {
+    window._espFbLastOnline = isOnline;
+    window._espFbInFlight = false;
+  }
+
+  return isOnline;
+}
+
+// Loop adaptativo do diagnostico:
+// ONLINE -> 2s | OFFLINE -> 4s (evita flood quando o controlador cai)
+window._espFbTimer = null;
+window._espFbInFlight = false;
+window._espFbLastOnline = false;
+
+function _scheduleEspFeedback(delayMs){
+  if (window._espFbTimer) clearTimeout(window._espFbTimer);
+  window._espFbTimer = setTimeout(async ()=>{
+    const online = await loadEspFeedback();
+    _scheduleEspFeedback(online ? 2000 : 4000);
+  }, delayMs);
+}
+function startEspFeedbackLoop(){
+  _scheduleEspFeedback(200);
+}
+
+function updateEspFeedbackUI(espState) {
+  const isOnline = (espState && espState.online === true);
+
+  const stEl = $('#esp-feedback-status');
+  stEl.textContent = isOnline ? tOnline() : tOffline();
+  stEl.dataset.state = isOnline ? 'on' : 'off';
+
+  $('#esp-status-indicator').className =
+    'status-indicator ' + (isOnline ? 'status-online' : 'status-offline');
+
+     // Wi-Fi do Controlador (SSID / RSSI dBm / Barras / MAC)
+  const ssid = (espState && (espState.ssid || espState.wifi_ssid)) || '';
+  const mac  = (espState && (espState.mac  || espState.wifi_mac))  || '';
+
+  const rssiRaw = (espState && (espState.rssi_dbm ?? espState.rssi ?? espState.wifi_rssi));
+  const barsRaw = (espState && (espState.rssi_bars ?? espState.wifi_bars));
+
+  const ssidEl = $('#esp-feedback-ssid');
+  const sigEl  = $('#esp-feedback-signal');
+  const iconEl = $('#esp-feedback-signal-icon');
+  const macEl  = $('#esp-feedback-mac');
+
+  const rssiNum = (typeof rssiRaw === 'number') ? rssiRaw : parseFloat(rssiRaw);
+
+  function barsFromRssi(r){
+    if (!Number.isFinite(r)) return null;
+    if (r >= -55) return 4;
+    if (r >= -67) return 3;
+    if (r >= -80) return 2;
+    return 1;
+  }
+  function barsGlyph(n){
+    const b = Math.max(0, Math.min(4, Number(n) || 0));
+    if (b <= 0) return '';
+    if (b === 1) return '�??1�??7';
+    if (b === 2) return '▂▄';
+    if (b === 3) return '▂▄�??1�??7';
+    return '▂▄▆█';
+  }
+
+  // Se offline: limpa infos
+  if (!isOnline){
+    if (ssidEl) ssidEl.textContent = 'N/A';
+    if (sigEl)  sigEl.textContent  = 'N/A';
+    if (iconEl) iconEl.textContent = '';
+    if (macEl)  macEl.textContent  = 'N/A';
+  } else {
+    if (ssidEl) ssidEl.textContent = (ssid && String(ssid).trim()) ? ssid : 'N/A';
+    if (macEl)  macEl.textContent  = (mac  && String(mac).trim())  ? mac  : 'N/A';
+
+    if (sigEl) sigEl.textContent = Number.isFinite(rssiNum) ? (rssiNum + ' dBm') : 'N/A';
+
+    const bars = Number.isFinite(Number(barsRaw)) ? Number(barsRaw) : barsFromRssi(rssiNum);
+    if (iconEl) iconEl.textContent = (bars == null) ? '' : barsGlyph(bars);
+  }
+
+  
+  $('#esp-feedback-ip').textContent = (espState && (espState.ip || espState.local_ip || espState.esp_ip)) ? (espState.ip || espState.local_ip || espState.esp_ip) : 'N/A';
+
+  if (espState.volumes){
+    const quiosqueMuted = (espState.mute_state||espState.ir_mutes)?.QUIOSQUE === true;
+    const piscinaMuted  = (espState.mute_state||espState.ir_mutes)?.PISCINA === true;
+
+    $('#esp-feedback-quiosque-vol').textContent =
+      (espState.volumes.quiosque !== undefined) ? espState.volumes.quiosque : '--';
+    $('#esp-feedback-quiosque-mute').style.display =
+      quiosqueMuted ? 'inline' : 'none';
+
+    $('#esp-feedback-piscina-vol').textContent =
+      (espState.volumes.piscina !== undefined) ? espState.volumes.piscina : '--';
+    $('#esp-feedback-piscina-mute').style.display =
+      piscinaMuted ? 'inline' : 'none';
+  } else {
+    $('#esp-feedback-quiosque-vol').textContent = '--';
+    $('#esp-feedback-piscina-vol').textContent  = '--';
+    // importante: nao deixar "Mudo" preso quando ficar offline/sem dados
+    $('#esp-feedback-quiosque-mute').style.display = 'none';
+    $('#esp-feedback-piscina-mute').style.display  = 'none';
+  }
+
+  if (espState.relays){
+    for (const id of ['r1','r2']){
+      const el = $('#esp-feedback-' + id);
+      if (el){
+        const on = espState.relays[id];
+        el.textContent = on ? 'ON' : 'OFF';
+        el.style.color = on ? '#2E7D32' : '#B08900';//'#388e3c' : '#d32f2f';
+      }
+    }
+  } else {
+    for (const id of ['r1','r2']){
+      const el = $('#esp-feedback-' + id);
+      if (el) el.textContent = '--';
+    }
+  }
+}
+document.getElementById('reload-logs').onclick = loadLogs;
+
+async function syncRemote(what){
+  const outEl = document.getElementById('sync-result');
+  const barEl = document.getElementById('sync-bar');
+  const detEl = document.getElementById('sync-details');
+
+  const force = !!document.getElementById('chkForceDownload')?.checked;
+
+  function setBar(pct){
+    if (barEl) barEl.style.width = (Math.max(0, Math.min(100, pct|0))) + '%';
+  }
+
+  function renderJob(job){
+    if (!job) return;
+
+    setBar(job.progress || 0);
+
+    const s = job.summary || {};
+    const line = `Sync ${job.what} (id=${job.sync_id}) - ${job.done ? 'FINALIZADO' : 'rodando'} | ok:${s.ok||0} skip:${s.skipped||0} fail:${s.failed||0}`;
+    if (outEl) outEl.textContent = line;
+
+    if (!detEl) return;
+
+    const items = job.items || [];
+    if (!items.length){
+      detEl.textContent = '...';
+      return;
+    }
+
+    detEl.innerHTML = items.map(it=>{
+      const st = it.status || '';
+      const name = it.name || '';
+      const kind = it.kind || '';
+      const src = it.source ? ` (${it.source})` : '';
+      const http = it.http ? ` http:${it.http}` : '';
+      const bytes = it.bytes ? ` ${it.bytes}B` : '';
+      const err = it.error ? ` - ${it.error}` : '';
+      return `<div class="sync-item ${st}"><span class="tag">${kind}</span> <b>${name}</b> <span class="st">${st}</span>${src}${http}${bytes}${err}</div>`;
+    }).join('');
+  }
+
+  async function poll(syncId){
+    const url = '/api/sync-progress?sync_id=' + encodeURIComponent(syncId);
+    let lastDone = false;
+    const timer = setInterval(async ()=>{
+      if (lastDone) { clearInterval(timer); return; }
+      try{
+        const j = await api(url);
+        if (j && j.ok){
+          renderJob(j);
+          if (j.done){
+            lastDone = true;
+            clearInterval(timer);
+            setBar(100);
+          }
+        }
+      }catch(e){
+        if (outEl) outEl.textContent = 'Erro ao ler progresso: ' + (e && e.message ? e.message : e);
+        clearInterval(timer);
+      }
+    }, 600);
+  }
+
+  if (outEl) outEl.textContent = 'Iniciando sync ' + what + (force ? ' (FORCADO)' : '') + '...';
+  if (detEl) detEl.textContent = '';
+  setBar(0);
+
+  try{
+    const r = await fetch('/api/sync-remote', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ what, force, respect_ttl: !force })
+    });
+
+    const j = await r.json().catch(()=>({}));
+    if (j && j.ok && j.sync_id){
+      if (outEl) outEl.textContent = 'Sync iniciado. id=' + j.sync_id + ' - aguardando progresso...';
+      poll(j.sync_id);
+      return;
+    }
+
+    if (j && j.ok){
+      if (outEl) outEl.textContent = 'OK: ' + what + ' (sem progresso)';
+      if (detEl) detEl.textContent = JSON.stringify(j, null, 2);
+      setBar(100);
+      return;
+    }
+
+    if (outEl) outEl.textContent = 'Falha ao iniciar sync: sem sync_id';
+    if (detEl) detEl.textContent = JSON.stringify(j, null, 2);
+
+  }catch(e){
+    if (outEl) outEl.textContent = 'Erro ao sincronizar: ' + (e && e.message ? e.message : e);
+  }
+}
+
+// ----- Auto update (UI) -----
+async function loadAutoUpdate(){
+  const hint = document.getElementById('auto-update-hint');
+  try{
+    const r = await fetch('/api/auto-update');
+    const j = await r.json();
+    if (j && j.ok){
+      const chk = document.getElementById('chkAutoUpdate');
+      if (chk) chk.checked = !!j.enabled;
+
+      if (hint){
+        const ttl = (j.ttl_s != null) ? (j.ttl_s + 's') : '';
+        const gap = (j.min_gap_s != null) ? (j.min_gap_s + 's') : '';
+        hint.textContent = (ttl || gap)
+          ? (t('ttlLabel') + ': ' + ttl + (gap ? (' | ' + t('minGapLabel') + ': ' + gap) : ''))
+          : '';
+      }
+    } else if (hint){
+      hint.textContent = '';
+    }
+  }catch(e){
+    if(hint) hint.textContent = '';
+  }
+}
+
+async function saveAutoUpdate(){
+  const chk = document.getElementById('chkAutoUpdate');
+  if (!chk) return;
+  const enabled = !!chk.checked;
+  const hint = document.getElementById('auto-update-hint');
+  try{
+    const r = await fetch('/api/auto-update', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({enabled})
+    });
+    const j = await r.json();
+    if (j && j.ok && hint){
+      const ttl = (j.ttl_s != null) ? (j.ttl_s + 's') : '';
+      const gap = (j.min_gap_s != null) ? (j.min_gap_s + 's') : '';
+      hint.textContent = (ttl || gap)
+        ? (t('ttlLabel') + ': ' + ttl + (gap ? (' | ' + t('minGapLabel') + ': ' + gap) : ''))
+        : '';
+    }
+  }catch(e){
+    // silencioso
+  }
+}
+
+const chkAU = document.getElementById('chkAutoUpdate');
+if (chkAU) chkAU.onchange = saveAutoUpdate;
+
+const b1 = document.getElementById('btn-sync-ui');
+if (b1) b1.onclick = () => syncRemote('ui');
+const b2 = document.getElementById('btn-sync-videos');
+if (b2) b2.onclick = () => syncRemote('videos');
+loadLogs();
+loadEspFeedback();
+loadAutoUpdate();
+startEspFeedbackLoop();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+

@@ -1,0 +1,385 @@
+:root {
+  /* Tema escuro padrao_github */
+  color-scheme: dark;
+}
+
+/* ====== LAYOUT BASE (ambas as paginas) ====== */
+body {
+  margin: 0;
+  background-color: #0b0f14;
+  background-image: url('images/background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  color: #eef;
+  font-family: system-ui, Segoe UI, Roboto, Arial;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 18px;
+  border-bottom: 1px solid #1a2633;
+  background-color: rgba(11, 15, 20, 0.8);
+  backdrop-filter: blur(10px);
+}
+
+/* Container principal (wrap) - usado em index.html e esp.html */
+.wrap {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 18px;
+  display: grid;
+  gap: 16px;
+}
+
+/* Cartoes (cards) de conteudo */
+.card {
+  background: rgba(17, 23, 34, 0.5);
+  border: 1px solid #1a2633;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .25);
+  backdrop-filter: blur(10px);
+}
+
+/* Linhas flex genericas */
+.row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ====== BOTOES E TIPOGRAFIA ====== */
+.btn {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid #263344;
+  background: #141c28;
+  color: #eef;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-danger {
+  background: #ff6b6b;
+  color: #2a0b0b;
+  border-color: #ff6b6b;
+}
+
+/* Texto auxiliar (ex: status, legendas) */
+.muted {
+  opacity: .75;
+  font-size: 12px;
+}
+
+/* Numero grande de volume */
+.volNum {
+  font-size: 28px;
+  font-weight: 800;
+  min-width: 64px;
+  text-align: center;
+}
+
+/* Sliders de volume */
+input[type=range] {
+  width: 100%;
+  accent-color: #ff8c00; /* cor do "track" do range */
+}
+
+/* Pequenos grids internos */
+.grid {
+  display: grid;
+  gap: 12px;
+}
+
+/* D-pad legado (caso seja usado futuramente) */
+.dpad {
+  display: grid;
+  grid-template-columns: 70px 70px 70px;
+  gap: 10px;
+  justify-content: center;
+}
+
+.dpad .btn {
+  height: 52px;
+  font-weight: 700;
+}
+
+.wide {
+  grid-column: 1 / span 3;
+}
+
+/* ====== CONTROLES POR AMBIENTE (card de ambientes em index.html) ====== */
+.control-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ====== CONTROLE DE RELES (card de acionamentos em index.html) ====== */
+.relay-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Estado visual quando rele esta ativo
+   Usado nos botoes .relay-toggle em index.html */
+.relay-toggle.active {
+  background-color: #4CAF50;
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(0, 255, 140, 0.8);
+  transform: translateY(-1px);
+}
+
+/* ====== LOGS & FEEDBACK (esp.html) ====== */
+/* Caixa de logs no esp.html (card "Logs do Servidor")
+   e possivel reuso futuro no index.html */
+.logbox {
+  min-height: 280px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: rgba(11, 16, 32, 0.3) !important; /* #0b1020 */
+  color: #e6edf3;
+  border-radius: 12px;
+  padding: 12px;
+  white-space: pre-wrap;
+  font-family: monospace;
+  font-size: 0.85em;
+}
+
+/* Mensagens inline de erro/sucesso (esp.html - card IP / feedback) */
+.error-message,
+.success-message {
+  font-size: 0.85rem;
+  margin-top: 5px;
+  display: none;
+}
+
+.error-message {
+  color: #d32f2f;
+}
+
+.success-message {
+  color: #388e3c;
+}
+
+.error-message.show,
+.success-message.show {
+  display: block;
+}
+
+/* Indicador de status (bolinha verde/vermelha do ESP em esp.html) */
+.status-indicator {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.status-online {
+  background-color: #388e3c;
+}
+
+.status-offline {
+  background-color: #d32f2f;
+}
+
+/* ====== SELECIONADOR DE IDIOMA (index.html + esp.html) ====== */
+/* Container das linguagens no header */
+.lang-picker {
+  display: flex;
+  gap: 8px;
+  margin-left: 16px;
+}
+
+
+/* Select (dropdown) compacto para idioma - usado só no mobile em modo retrato */
+.lang-select-wrap{
+  display: none;
+  margin-left: 16px;
+}
+
+.lang-select{
+  height: 32px;
+  border-radius: 999px;
+  padding: 0 10px;
+  border: 1px solid #263344;
+  background: #141c28;
+  color: #eef;
+  font-weight: 700;
+  font-size: 13px;
+  opacity: .95;
+}
+
+.lang-select:focus{
+  outline: 2px solid #ff8c00;
+  outline-offset: 2px;
+}
+
+/* Mostra o select no retrato (economiza altura) e esconde os botoes */
+@media (max-width: 720px) and (orientation: portrait){
+  .lang-picker{ display: none; }
+  .lang-select-wrap{ display: inline-flex; }
+  .lang-select-wrap{ margin-left: 0; }
+}
+
+/* No landscape (celular deitado) mantem os botoes e esconde o select */
+@media (max-width: 720px) and (orientation: landscape){
+  .lang-select-wrap{ display: none; }
+  .lang-picker{ display: flex; }
+}
+/* Botao de idioma:
+   - usado em index.html e esp.html
+   - conteudo interno: span.lang-flag + span.lang-code
+*/
+.lang-btn {
+  min-width: 32px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1;
+  border: 1px solid #263344;
+  background: #141c28;
+  color: #eef;
+  cursor: pointer;
+  opacity: .85;
+}
+
+/* Flag (emoji) - pode sumir em alguns browsers, mas o texto (lang-code) fica */
+.lang-btn .lang-flag {
+  font-size: 16px;
+}
+
+/* Codigo da lingua (PT, ES, EN...) - garante leitura mesmo sem emoji */
+.lang-btn .lang-code {
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+/* Destaque para lingua ativa */
+.lang-btn[aria-current="true"] {
+  outline: 2px solid #ff8c00;
+  opacity: 1;
+}
+
+/* ====== CARD: APLICATIVOS (index.html) ====== */
+/* Layout interno do card "Aplicativos"
+   HTML: section.card > div.row.app-row
+   Botoes envolvidos:
+     #btnWelcome, #btnYouTube, #btnHome, #btnStartShow, #btnStopShow
+   Scripts: ver index.html - secao "Controles principais do painel"  */
+.card .app-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-left,
+.app-center,
+.app-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-left {
+  justify-content: flex-start;
+}
+
+.app-center {
+  justify-content: center;
+}
+
+.app-right {
+  justify-content: flex-end;
+}
+
+/* (OUTROS estilos especificos podem ser adicionados abaixo conforme novos cards/features) */
+
+
+/* ====== RESPONSIVO (celular) ====== */
+@media (max-width: 720px) {
+  header { flex-wrap: wrap; }
+  header strong { flex: 1 1 100%; }
+  header nav { flex: 1 1 auto; }
+
+  .lang-picker { flex-wrap: wrap; margin-left: 0; }
+
+  .wrap { padding: 12px; }
+
+  /* Card Aplicativos: empilha e evita estouro horizontal */
+  .card .app-row { flex-direction: column; align-items: stretch; }
+  .app-left, .app-center, .app-right {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .app-left .btn, .app-center .btn, .app-right .btn {
+    width: 100%;
+  }
+
+  /* Reles / acoes: vira 2 colunas (ou 1 se ficar apertado) */
+  .relay-controls { justify-content: center; }
+  .relay-controls .btn { flex: 1 1 calc(50% - 10px); min-width: 140px; }
+
+  /* Ambientes: stack */
+  .control-group { width: 100%; min-width: 0; }
+}
+
+
+/* ====== SINCRONIZACAO REMOTA (esp.html) ====== */
+.sync-progress{
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid #263344;
+  background: rgba(11, 16, 32, 0.35);
+  overflow: hidden;
+}
+.sync-bar{
+  height: 100%;
+  width: 0%;
+  background: #ff8c00;
+  transition: width .2s ease;
+}
+.sync-details{
+  font-size: 12px;
+  line-height: 1.25;
+}
+.sync-item{
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(38, 51, 68, 0.6);
+  background: rgba(17, 23, 34, 0.35);
+  margin-bottom: 6px;
+}
+.sync-item .tag{
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(38, 51, 68, 0.8);
+  opacity: .85;
+  margin-right: 6px;
+}
+.sync-item .st{
+  opacity: .9;
+  margin-left: 8px;
+}
+.sync-item.ok{ border-color: rgba(56, 142, 60, .7); }
+.sync-item.skipped{ border-color: rgba(255, 140, 0, .55); }
+.sync-item.failed{ border-color: rgba(211, 47, 47, .7); }
